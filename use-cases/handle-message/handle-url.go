@@ -1,0 +1,355 @@
+// Extract URL from message and understand the root domain
+// If domain is in whitelist table ( inject in db stub ), curl the body of the URL
+// Pass body to Gemini API with sys prompt from assets/prompts/extract-strains.txt
+// For each item in returned JSON list, check if valid strain in injected nug labs client
+// Then return message of deeplinks to found strains and underneath say which strains have been extracted and couldn't be found
+// Each strain should emit strain-found and strain-not-found events injected from analytics
+
+package handlemessage
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"html"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"time"
+
+	"telegram-v2/utils"
+)
+
+type urlStrainClient interface {
+	GetStrain(ctx context.Context, name string) (map[string]any, error)
+}
+
+type HandleURLUseCase struct {
+	db            utils.DB
+	analytics     *utils.Analytics
+	nuglabsClient urlStrainClient
+}
+
+func NewHandleURLUseCase(
+	db utils.DB,
+	analytics *utils.Analytics,
+	nuglabsClient urlStrainClient,
+) *HandleURLUseCase {
+	return &HandleURLUseCase{
+		db:            db,
+		analytics:     analytics,
+		nuglabsClient: nuglabsClient,
+	}
+}
+
+func (u *HandleURLUseCase) Handle(ctx context.Context, input string) (string, error) {
+	rawURL := strings.TrimSpace(input)
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return "Please send a valid URL.", nil
+	}
+
+	allowed, err := u.isWhitelisted(ctx, rawURL, parsed.Host)
+	if err != nil {
+		return "", err
+	}
+	if !allowed {
+		return "URL domain is not whitelisted.", nil
+	}
+
+	body, err := fetchBody(ctx, rawURL)
+	if err != nil {
+		return "", err
+	}
+	body = extractArticleContentText(body)
+	if strings.TrimSpace(body) == "" {
+		return "Unable to extract article content from URL.", nil
+	}
+
+	candidates, err := u.extractWithGemini(ctx, body)
+	if err != nil {
+		return "", err
+	}
+	if len(candidates) == 0 {
+		return "No strain names could be extracted.", nil
+	}
+
+	found := make([]string, 0, len(candidates))
+	notFound := make([]string, 0)
+	for _, name := range candidates {
+		strain, err := u.nuglabsClient.GetStrain(ctx, name)
+		if err != nil {
+			continue
+		}
+		if strain != nil {
+			found = append(found, name)
+			_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{Name: "strain-found", Status: "ok", Meta: map[string]any{"name": name}})
+		} else {
+			notFound = append(notFound, name)
+			_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{Name: "strain-not-found", Status: "miss", Meta: map[string]any{"name": name}})
+		}
+	}
+
+	_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
+		Name:   "url-processed",
+		Status: "ok",
+		Meta:   map[string]any{"url": rawURL, "candidates": len(candidates), "found": len(found)},
+	})
+
+	var b strings.Builder
+	if len(found) > 0 {
+		b.WriteString("Found strains:\n")
+		for _, name := range found {
+			b.WriteString("- ")
+			b.WriteString(buildDeeplink(name))
+			b.WriteString("\n")
+		}
+	}
+	if len(notFound) > 0 {
+		b.WriteString("\nNot found:\n")
+		for _, name := range notFound {
+			b.WriteString("- ")
+			b.WriteString(name)
+			b.WriteString("\n")
+		}
+	}
+	msg := strings.TrimSpace(b.String())
+	if msg == "" {
+		msg = "No known strains found from URL content."
+	}
+	return msg, nil
+}
+
+func (u *HandleURLUseCase) extractWithGemini(ctx context.Context, body string) ([]string, error) {
+	key := strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
+	if key == "" {
+		return nil, fmt.Errorf("GEMINI_API_KEY is required")
+	}
+
+	promptPath := filepath.Join(".", "assets", "prompts", "extract-strains.txt")
+	systemPromptRaw, err := os.ReadFile(promptPath)
+	if err != nil {
+		return nil, fmt.Errorf("read prompt file: %w", err)
+	}
+
+	const maxBodyChars = 12000
+	if len(body) > maxBodyChars {
+		body = body[:maxBodyChars]
+	}
+
+	reqBody := map[string]any{
+		"contents": []map[string]any{
+			{
+				"role": "user",
+				"parts": []map[string]any{
+					{"text": string(systemPromptRaw)},
+					{"text": "Raw text:\n" + body},
+				},
+			},
+		},
+	}
+	payload, _ := json.Marshal(reqBody)
+	logGeminiInput(string(systemPromptRaw), body, string(payload))
+
+	endpoint := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + url.QueryEscape(key)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(string(payload)))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 20 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	rawResp, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		fmt.Printf("[gemini] non-200 raw response: %s\n", string(rawResp))
+		return nil, fmt.Errorf("gemini failed: status %d", resp.StatusCode)
+	}
+
+	text := extractGeminiText(rawResp)
+	logGeminiOutput(string(rawResp), text)
+	if text == "" {
+		return []string{}, nil
+	}
+	return parseStrainJSONArray(text), nil
+}
+
+func extractGeminiText(raw []byte) string {
+	var parsed struct {
+		Candidates []struct {
+			Content struct {
+				Parts []struct {
+					Text string `json:"text"`
+				} `json:"parts"`
+			} `json:"content"`
+		} `json:"candidates"`
+	}
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		return ""
+	}
+	if len(parsed.Candidates) == 0 || len(parsed.Candidates[0].Content.Parts) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(parsed.Candidates[0].Content.Parts[0].Text)
+}
+
+func parseStrainJSONArray(text string) []string {
+	text = strings.TrimSpace(text)
+	if idx := strings.Index(text, "["); idx >= 0 {
+		text = text[idx:]
+	}
+	if idx := strings.LastIndex(text, "]"); idx >= 0 {
+		text = text[:idx+1]
+	}
+
+	var names []string
+	if err := json.Unmarshal([]byte(text), &names); err != nil {
+		return []string{}
+	}
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(names))
+	for _, n := range names {
+		clean := strings.TrimSpace(n)
+		if clean == "" {
+			continue
+		}
+		k := strings.ToLower(clean)
+		if _, ok := seen[k]; ok {
+			continue
+		}
+		seen[k] = struct{}{}
+		out = append(out, clean)
+	}
+	return out
+}
+
+func (u *HandleURLUseCase) isWhitelisted(ctx context.Context, rawURL string, host string) (bool, error) {
+	rows, err := u.db.QueryContext(ctx, `SELECT domain FROM whitelist`)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var entry string
+		if err := rows.Scan(&entry); err != nil {
+			return false, err
+		}
+		entry = strings.TrimSpace(strings.ToLower(entry))
+		if entry == "" {
+			continue
+		}
+
+		rawLower := strings.ToLower(rawURL)
+		hostLower := strings.ToLower(host)
+
+		// Exact URL match.
+		if entry == rawLower {
+			return true, nil
+		}
+
+		// URL origin/prefix match
+		if strings.HasPrefix(entry, "http://") || strings.HasPrefix(entry, "https://") {
+			if strings.HasPrefix(rawLower, entry) {
+				return true, nil
+			}
+			parsed, err := url.Parse(entry)
+			if err == nil && parsed.Host != "" && strings.EqualFold(parsed.Host, hostLower) {
+				return true, nil
+			}
+			continue
+		}
+
+		// Host-only match.
+		if entry == hostLower {
+			return true, nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return false, err
+	}
+	return false, nil
+}
+
+func fetchBody(ctx context.Context, rawURL string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return "", err
+	}
+	client := &http.Client{Timeout: 8 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("url fetch failed with status %d", resp.StatusCode)
+	}
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 2_000_000))
+	if err != nil {
+		return "", err
+	}
+	return string(raw), nil
+}
+
+func extractArticleContentText(pageHTML string) string {
+	// Narrow extraction to the exact container to reduce hallucination from site template noise.
+	reContainer := regexp.MustCompile(`(?is)<div[^>]*id=["']articleContent["'][^>]*>(.*?)</div>`)
+	m := reContainer.FindStringSubmatch(pageHTML)
+	if len(m) < 2 {
+		return ""
+	}
+	block := m[1]
+
+	// Convert line breaks-ish tags to newlines before stripping other tags.
+	reBreaks := regexp.MustCompile(`(?is)<\s*(br|/p|/div|/li)\s*/?\s*>`)
+	block = reBreaks.ReplaceAllString(block, "\n")
+
+	reTags := regexp.MustCompile(`(?is)<[^>]+>`)
+	text := reTags.ReplaceAllString(block, " ")
+	text = html.UnescapeString(text)
+
+	spaceRe := regexp.MustCompile(`[ \t\r\f\v]+`)
+	text = spaceRe.ReplaceAllString(text, " ")
+	newlineRe := regexp.MustCompile(`\n+`)
+	text = newlineRe.ReplaceAllString(text, "\n")
+	return strings.TrimSpace(text)
+}
+
+func buildDeeplink(strainName string) string {
+	username := strings.TrimSpace(os.Getenv("TELEGRAM_BOT_USERNAME"))
+	if username == "" {
+		return strainName
+	}
+	payload := url.QueryEscape(strainName)
+	return "https://t.me/" + username + "?start=" + payload
+}
+
+func logGeminiInput(systemPrompt string, body string, payload string) {
+	fmt.Printf("[gemini] system prompt:\n%s\n", systemPrompt)
+	fmt.Printf("[gemini] body excerpt (%d chars):\n%s\n", len(body), truncateForLog(body, 2000))
+	fmt.Printf("[gemini] request payload:\n%s\n", truncateForLog(payload, 4000))
+}
+
+func logGeminiOutput(raw string, extractedText string) {
+	fmt.Printf("[gemini] raw response:\n%s\n", truncateForLog(raw, 6000))
+	fmt.Printf("[gemini] extracted text:\n%s\n", truncateForLog(extractedText, 2000))
+}
+
+func truncateForLog(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max] + "\n...<truncated>..."
+}

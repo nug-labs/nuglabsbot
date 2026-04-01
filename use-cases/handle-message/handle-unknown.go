@@ -1,0 +1,77 @@
+// Look in responses table inejct in db stub
+//  Normalise input aginst regex of only alpha numeric characters
+// If key exists return value from messages as msg
+// othersie return value from "default" key value as msg
+
+package handlemessage
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"regexp"
+	"strings"
+	"telegram-v2/utils"
+)
+
+type HandleUnknownUseCase struct {
+	db        any
+	analytics *utils.Analytics
+}
+
+func NewHandleUnknownUseCase(db any, analytics *utils.Analytics) *HandleUnknownUseCase {
+	return &HandleUnknownUseCase{db: db, analytics: analytics}
+}
+
+func (u *HandleUnknownUseCase) Handle(ctx context.Context, input string) (string, error) {
+	db, ok := u.db.(utils.DB)
+	if !ok {
+		return "Unknown query", nil
+	}
+
+	key := normalizeKey(input)
+	msg, err := lookupResponse(ctx, db, key)
+	if err != nil {
+		return "", err
+	}
+	if msg == "" {
+		msg, err = lookupResponse(ctx, db, "default")
+		if err != nil {
+			return "", err
+		}
+	}
+	if msg == "" {
+		msg = "Unknown query"
+	}
+
+	_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
+		Name:   "unknown-response",
+		Status: "ok",
+		Meta:   map[string]any{"key": key},
+	})
+	return msg, nil
+}
+
+func normalizeKey(in string) string {
+	nonAlnum := regexp.MustCompile(`[^a-zA-Z0-9 ]+`)
+	out := strings.ToLower(strings.TrimSpace(in))
+	out = nonAlnum.ReplaceAllString(out, "")
+	out = strings.Join(strings.Fields(out), " ")
+	return out
+}
+
+func lookupResponse(ctx context.Context, db utils.DB, key string) (string, error) {
+	if key == "" {
+		return "", nil
+	}
+	var message string
+	err := db.QueryRowContext(ctx, `SELECT message FROM responses WHERE key = $1`, key).Scan(&message)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("lookup response %q: %w", key, err)
+	}
+	return message, nil
+}
