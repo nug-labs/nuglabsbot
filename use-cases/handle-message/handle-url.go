@@ -78,7 +78,7 @@ func (u *HandleURLUseCase) Handle(ctx context.Context, input string) (string, er
 		return "No strain names could be extracted.", nil
 	}
 
-	found := make([]string, 0, len(candidates))
+	foundStrains := make([]map[string]any, 0, len(candidates))
 	notFound := make([]string, 0)
 	for _, name := range candidates {
 		strain, err := u.nuglabsClient.GetStrain(ctx, name)
@@ -86,7 +86,7 @@ func (u *HandleURLUseCase) Handle(ctx context.Context, input string) (string, er
 			continue
 		}
 		if strain != nil {
-			found = append(found, name)
+			foundStrains = append(foundStrains, strain)
 			_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{Name: "strain-found", Status: "ok", Meta: map[string]any{"name": name}})
 		} else {
 			notFound = append(notFound, name)
@@ -97,23 +97,21 @@ func (u *HandleURLUseCase) Handle(ctx context.Context, input string) (string, er
 	_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
 		Name:   "url-processed",
 		Status: "ok",
-		Meta:   map[string]any{"url": rawURL, "candidates": len(candidates), "found": len(found)},
+		Meta:   map[string]any{"url": rawURL, "candidates": len(candidates), "found": len(foundStrains)},
 	})
 
 	var b strings.Builder
-	if len(found) > 0 {
-		b.WriteString("Found strains:\n")
-		for _, name := range found {
-			b.WriteString("- ")
-			b.WriteString(buildDeeplink(name))
-			b.WriteString("\n")
-		}
+	if len(foundStrains) > 0 {
+		b.WriteString(formatURLFoundStrainsHTML(foundStrains))
 	}
 	if len(notFound) > 0 {
-		b.WriteString("\nNot found:\n")
+		if b.Len() > 0 {
+			b.WriteString("\n\n")
+		}
+		b.WriteString("Not found:\n")
 		for _, name := range notFound {
 			b.WriteString("- ")
-			b.WriteString(name)
+			b.WriteString(html.EscapeString(name))
 			b.WriteString("\n")
 		}
 	}
@@ -327,13 +325,18 @@ func extractArticleContentText(pageHTML string) string {
 	return strings.TrimSpace(text)
 }
 
-func buildDeeplink(strainName string) string {
-	username := strings.TrimSpace(os.Getenv("TELEGRAM_BOT_USERNAME"))
-	if username == "" {
-		return strainName
+func formatURLFoundStrainsHTML(found []map[string]any) string {
+	var blocks []string
+	blocks = append(blocks, "Found strains")
+	for _, strain := range found {
+		display := anyToString(strain["name"])
+		if display == "" {
+			continue
+		}
+		line := "<b>" + html.EscapeString(display) + "</b>\n" + StrainDeeplink(display)
+		blocks = append(blocks, line)
 	}
-	payload := url.QueryEscape(strainName)
-	return "https://t.me/" + username + "?start=" + payload
+	return strings.Join(blocks, "\n\n")
 }
 
 func logGeminiInput(systemPrompt string, body string, payload string) {

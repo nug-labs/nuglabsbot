@@ -153,7 +153,7 @@ func handleUpdate(
 			if err != nil {
 				return err
 			}
-			_, err = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, reply))
+			_, err = bot.Send(newHTMLMessageIfNeeded(update.Message.Chat.ID, reply))
 			return err
 		}
 
@@ -161,7 +161,7 @@ func handleUpdate(
 		if err != nil {
 			return err
 		}
-		_, err = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, reply))
+		_, err = bot.Send(newHTMLMessageIfNeeded(update.Message.Chat.ID, reply))
 		return err
 	}
 
@@ -180,10 +180,11 @@ func handleUpdate(
 		results := make([]interface{}, 0, len(hits))
 		for i, hit := range hits {
 			name := fmt.Sprintf("%v", hit["name"])
-			article := tgbotapi.NewInlineQueryResultArticle(
+			body := handlemessage.FormatStrainHTML(hit)
+			article := tgbotapi.NewInlineQueryResultArticleHTML(
 				fmt.Sprintf("strain-%d", i),
 				name,
-				name,
+				body,
 			)
 			results = append(results, article)
 		}
@@ -199,6 +200,14 @@ func handleUpdate(
 	}
 
 	return nil
+}
+
+func newHTMLMessageIfNeeded(chatID int64, text string) tgbotapi.MessageConfig {
+	m := tgbotapi.NewMessage(chatID, text)
+	if strings.Contains(text, "<b>") {
+		m.ParseMode = "HTML"
+	}
+	return m
 }
 
 type telegramBroadcaster struct {
