@@ -19,19 +19,25 @@ type PolicyHandler interface {
 	Handle(ctx context.Context, policyName string) (string, error)
 }
 
-type CommandController struct {
-	strainHandler StrainHandler
-	policyHandler PolicyHandler
+type SubscribeHandler interface {
+	Handle(ctx context.Context, chatID int64) (string, error)
 }
 
-func NewCommandController(strainHandler StrainHandler, policyHandler PolicyHandler) *CommandController {
+type CommandController struct {
+	strainHandler    StrainHandler
+	policyHandler    PolicyHandler
+	subscribeHandler SubscribeHandler
+}
+
+func NewCommandController(strainHandler StrainHandler, policyHandler PolicyHandler, subscribeHandler SubscribeHandler) *CommandController {
 	return &CommandController{
-		strainHandler: strainHandler,
-		policyHandler: policyHandler,
+		strainHandler:    strainHandler,
+		policyHandler:    policyHandler,
+		subscribeHandler: subscribeHandler,
 	}
 }
 
-func (c *CommandController) Handle(ctx context.Context, command string, argument string) (string, error) {
+func (c *CommandController) Handle(ctx context.Context, chatID int64, command string, argument string) (string, error) {
 	cmd := strings.ToLower(strings.TrimSpace(command))
 	arg := strings.TrimSpace(argument)
 
@@ -44,6 +50,11 @@ func (c *CommandController) Handle(ctx context.Context, command string, argument
 	}
 
 	switch cmd {
+	case "subscribe":
+		if c.subscribeHandler == nil {
+			return "Subscriptions are unavailable right now.", nil
+		}
+		return c.subscribeHandler.Handle(ctx, chatID)
 	case "privacy-policy", "terms-of-service", "help", "about", "contact", "feedback", "support", "faq", "legal":
 		return c.policyHandler.Handle(ctx, cmd)
 	default:

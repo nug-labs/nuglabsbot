@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"telegram-v2/utils"
+	"time"
 )
 
 type strainClient interface {
@@ -21,10 +22,12 @@ type strainClient interface {
 type HandleStrainUseCase struct {
 	nuglabsClient any
 	analytics     *utils.Analytics
+	db            utils.DB
+	logger        *utils.Logger
 }
 
-func NewHandleStrainUseCase(nuglabsClient any, analytics *utils.Analytics) *HandleStrainUseCase {
-	return &HandleStrainUseCase{nuglabsClient: nuglabsClient, analytics: analytics}
+func NewHandleStrainUseCase(nuglabsClient any, analytics *utils.Analytics, db utils.DB, logger *utils.Logger) *HandleStrainUseCase {
+	return &HandleStrainUseCase{nuglabsClient: nuglabsClient, analytics: analytics, db: db, logger: logger}
 }
 
 func (u *HandleStrainUseCase) Handle(ctx context.Context, input string) (string, error) {
@@ -43,12 +46,16 @@ func (u *HandleStrainUseCase) Handle(ctx context.Context, input string) (string,
 		return "", err
 	}
 	if strain != nil {
+		msg := formatStrain(strain)
+		if err := u.enqueueSubscriptionBroadcasts(ctx, msg); err != nil && u.logger != nil {
+			u.logger.Error("enqueue subscription broadcasts failed: %v", err)
+		}
 		_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
 			Name:   "strain-found",
 			Status: "ok",
 			Meta:   map[string]any{"query": query},
 		})
-		return formatStrain(strain), nil
+		return msg, nil
 	}
 
 	hits, err := client.SearchStrains(ctx, query)
@@ -155,7 +162,7 @@ func FormatStrainHTML(strain map[string]any) string {
 
 func formatTopMatchesHTML(hits []map[string]any) string {
 	var parts []string
-	parts = append(parts, "Maybe you mean")
+	parts = append(parts, "<b>Maybe you mean</b>")
 	for _, hit := range hits {
 		name := anyToString(hit["name"])
 		if name == "" {
@@ -299,4 +306,65 @@ func anyToString(v any) string {
 		}
 		return fmt.Sprintf("%v", t)
 	}
+}
+
+func (u *HandleStrainUseCase) enqueueSubscriptionBroadcasts(ctx context.Context, message string) error {
+	if u.db == nil || strings.TrimSpace(message) == "" {
+		return nil
+	}
+
+	rows, err := u.db.QueryContext(
+		ctx,
+		`SELECT telegram_id FROM subscriptions WHERE enabled = TRUE ORDER BY telegram_id ASC`,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	now := time.Now().UTC()
+	var idx int64
+	var queued int
+	for rows.Next() {
+		var telegramID int64
+		if err := rows.Scan(&telegramID); err != nil {
+			return err
+		}
+		idx++
+
+		broadcastID := fmt.Sprintf("strain-%d-%d-%d", now.UnixNano(), telegramID, idx)
+		payloadRaw, err := json.Marshal(map[string]any{"text": message})
+		if err != nil {
+			return err
+		}
+		if _, err := u.db.ExecContext(
+			ctx,
+			`INSERT INTO broadcasts (id, type, payload, created_at) VALUES ($1, 'message', $2::jsonb, $3)`,
+			broadcastID, string(payloadRaw), now,
+		); err != nil {
+			if u.logger != nil {
+				u.logger.Warn("skip broadcast row for chat %d: insert broadcasts failed: %v", telegramID, err)
+			}
+			continue
+		}
+		if _, err := u.db.ExecContext(
+			ctx,
+			`INSERT INTO broadcast_outgoing (broadcast_id, user_id, scheduled_at) VALUES ($1, $2, $3)`,
+			broadcastID, telegramID, now,
+		); err != nil {
+			if u.logger != nil {
+				u.logger.Warn("skip outgoing row for chat %d: insert broadcast_outgoing failed: %v", telegramID, err)
+			}
+			continue
+		}
+		queued++
+	}
+
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if u.logger != nil {
+		u.logger.Info("queued strain broadcast for %d enabled subscriptions", queued)
+	}
+	return nil
 }

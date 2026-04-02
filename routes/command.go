@@ -18,9 +18,9 @@ func NewCommandRoute(middleware *middleware.HandleUserMiddleware, controller *co
 	return &CommandRoute{middleware: middleware, controller: controller}
 }
 
-func (r *CommandRoute) Handle(ctx context.Context, user middleware.TelegramUser, command string, argument string) (string, error) {
+func (r *CommandRoute) Handle(ctx context.Context, user middleware.TelegramUser, chatID int64, command string, argument string) (string, error) {
 	if err := r.middleware.EnsureUser(ctx, user); err != nil {
 		return "", err
 	}
-	return r.controller.Handle(ctx, command, argument)
+	return r.controller.Handle(ctx, chatID, command, argument)
 }

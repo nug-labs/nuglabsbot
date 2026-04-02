@@ -20,6 +20,7 @@ import (
 	handlecommand "telegram-v2/use-cases/handle-command"
 	handleinline "telegram-v2/use-cases/handle-inline"
 	handlemessage "telegram-v2/use-cases/handle-message"
+	handlesubscribe "telegram-v2/use-cases/handle-subscribe"
 	"telegram-v2/utils"
 )
 
@@ -71,17 +72,18 @@ func main() {
 	}
 
 	handleUnknownUC := handlemessage.NewHandleUnknownUseCase(db, analytics)
-	handleStrainUC := handlemessage.NewHandleStrainUseCase(nugClient, analytics)
+	handleStrainUC := handlemessage.NewHandleStrainUseCase(nugClient, analytics, db, logger)
 	handleURLUC := handlemessage.NewHandleURLUseCase(db, analytics, nugClient)
 	handleMessageRootUC := handlemessage.NewRootUseCase(handleURLUC, handleStrainUC, handleUnknownUC, analytics)
 
 	handlePolicyUC := handlecommand.NewHandlePolicyUseCase(analytics)
+	handleSubscribeUC := handlesubscribe.NewRootUseCase(db, analytics)
 	handleInlineUC := handleinline.NewHandleInlineUseCase(nugClient, analytics)
 	handleBroadcastUC := handlebroadcast.NewRootUseCase(db, analytics, broadcastSender, broadcastSender)
 
 	userMiddleware := middleware.NewHandleUserMiddleware(db)
 	messageController := controllers.NewMessageController(handleMessageRootUC)
-	commandController := controllers.NewCommandController(handleStrainUC, handlePolicyUC)
+	commandController := controllers.NewCommandController(handleStrainUC, handlePolicyUC, handleSubscribeUC)
 	inlineController := controllers.NewInlineController(handleInlineUC, handleStrainUC)
 
 	messageRoute := routes.NewMessageRoute(userMiddleware, messageController)
@@ -149,7 +151,7 @@ func handleUpdate(
 		}
 
 		if update.Message.IsCommand() {
-			reply, err := commandRoute.Handle(ctx, user, "/"+update.Message.Command(), update.Message.CommandArguments())
+			reply, err := commandRoute.Handle(ctx, user, update.Message.Chat.ID, "/"+update.Message.Command(), update.Message.CommandArguments())
 			if err != nil {
 				return err
 			}
@@ -214,8 +216,8 @@ type telegramBroadcaster struct {
 	bot *tgbotapi.BotAPI
 }
 
-func (t *telegramBroadcaster) SendMessage(userID int64, text string) error {
-	_, err := t.bot.Send(tgbotapi.NewMessage(userID, text))
+func (t *telegramBroadcaster) SendMessage(chatID int64, text string) error {
+	_, err := t.bot.Send(newHTMLMessageIfNeeded(chatID, text))
 	return err
 }
 
