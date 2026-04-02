@@ -29,7 +29,7 @@ import (
 // Initialize dependencies
 // conditional on whether to use .env or .env.test
 
-const LIVE = false
+const LIVE = true
 
 func main() {
 	loadEnv()
@@ -154,6 +154,9 @@ func handleUpdate(
 			reply, err := commandRoute.Handle(ctx, user, update.Message.Chat.ID, "/"+update.Message.Command(), update.Message.CommandArguments())
 			if err != nil {
 				return err
+			}
+			if strings.TrimSpace(reply) == "" {
+				return nil
 			}
 			_, err = bot.Send(newHTMLMessageIfNeeded(update.Message.Chat.ID, reply))
 			return err

@@ -42,7 +42,14 @@ func (c *CommandController) Handle(ctx context.Context, chatID int64, command st
 	arg := strings.TrimSpace(argument)
 
 	if cmd == "/start" && arg != "" {
-		return c.strainHandler.Handle(ctx, arg)
+		normalized := strings.ReplaceAll(arg, "-", " ")
+		return c.strainHandler.Handle(ctx, normalized)
+	}
+	if cmd == "/start" {
+		if chatID < 0 {
+			return "", nil
+		}
+		return c.policyHandler.Handle(ctx, "start")
 	}
 
 	if strings.HasPrefix(cmd, "/") {
@@ -55,8 +62,14 @@ func (c *CommandController) Handle(ctx context.Context, chatID int64, command st
 			return "Subscriptions are unavailable right now.", nil
 		}
 		return c.subscribeHandler.Handle(ctx, chatID)
-	case "privacy-policy", "terms-of-service", "help", "about", "contact", "feedback", "support", "faq", "legal":
-		return c.policyHandler.Handle(ctx, cmd)
+	case "help":
+		return c.policyHandler.Handle(ctx, "help")
+	case "about":
+		return c.policyHandler.Handle(ctx, "about")
+	case "legal":
+		return c.policyHandler.Handle(ctx, "legal")
+	case "links":
+		return c.policyHandler.Handle(ctx, "links")
 	default:
 		return c.policyHandler.Handle(ctx, "help")
 	}

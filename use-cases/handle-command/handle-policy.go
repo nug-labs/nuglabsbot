@@ -1,4 +1,4 @@
-// Determine which policy and which md file to return from assets/policies/*.md
+// Determine which policy and which html file to return from assets/policies/*.html
 
 package handlecommand
 
@@ -25,7 +25,7 @@ func (u *HandlePolicyUseCase) Handle(ctx context.Context, policyName string) (st
 	if policyName == "" {
 		policyName = "help"
 	}
-	path := filepath.Join(".", "assets", "policies", policyName+".md")
+	path := filepath.Join(".", "assets", "policies", policyName+".html")
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("read policy %s: %w", policyName, err)

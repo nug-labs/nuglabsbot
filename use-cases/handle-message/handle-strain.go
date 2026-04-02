@@ -292,7 +292,7 @@ func StrainDeeplink(strainName string) string {
 	if username == "" {
 		return strainName
 	}
-	payload := url.QueryEscape(strainName)
+	payload := url.QueryEscape(strings.Join(strings.Fields(strainName), "-"))
 	return "https://t.me/" + username + "?start=" + payload
 }
 
