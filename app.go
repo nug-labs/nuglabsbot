@@ -17,11 +17,13 @@ import (
 	"telegram-v2/routes"
 	handlebroadcast "telegram-v2/use-cases/handle-broadcast"
 	handlecommand "telegram-v2/use-cases/handle-command"
+	handleevents "telegram-v2/use-cases/handle-events"
 	handlegroupchat "telegram-v2/use-cases/handle-groupchat"
 	handleinline "telegram-v2/use-cases/handle-inline"
 	handlemessage "telegram-v2/use-cases/handle-message"
 	handlesubscribe "telegram-v2/use-cases/handle-subscribe"
 	"telegram-v2/utils"
+	"telegram-v2/utils/db"
 )
 
 /*
@@ -35,16 +37,22 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	logger := utils.NewLogger()
+	logger := utils.NewAsyncLogger(ctx)
 
-	db, err := utils.DatabaseManager.Init(ctx)
+	database, err := db.DatabaseManager.Init(ctx)
 	if err != nil {
 		logger.Error("database init failed: %v", err)
 		panic(err)
 	}
-	defer db.Close()
+	defer database.Close()
 
-	analytics := utils.AnalyticsManager.Init(db, logger)
+	analytics := utils.AnalyticsManager.Init(logger)
+	deferredWrites := db.NewDeferredWriteQueue()
+	go deferredWrites.Run(ctx, database, logger)
+
+	handleEventsUC := handleevents.NewRootUseCase(database, analytics, logger)
+	eventsService := bgservices.NewHandleEventsService(handleEventsUC, logger)
+	go eventsService.Run(ctx)
 
 	token := strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN"))
 	if token == "" {
@@ -71,18 +79,18 @@ func main() {
 		logger.Warn("nuglabs force resync failed, continuing with bundled data: %v", err)
 	}
 
-	handleUnknownUC := handlemessage.NewHandleUnknownUseCase(db, analytics)
-	handleStrainUC := handlemessage.NewHandleStrainUseCase(nugClient, analytics, db, logger)
-	handleURLUC := handlemessage.NewHandleURLUseCase(db, analytics, nugClient, logger)
+	handleUnknownUC := handlemessage.NewHandleUnknownUseCase(database, analytics)
+	handleStrainUC := handlemessage.NewHandleStrainUseCase(nugClient, analytics, database, logger)
+	handleURLUC := handlemessage.NewHandleURLUseCase(database, analytics, nugClient, logger)
 	handleMessageRootUC := handlemessage.NewRootUseCase(handleURLUC, handleStrainUC, handleUnknownUC, analytics)
 
 	handlePolicyUC := handlecommand.NewRootUseCase(handlecommand.NewHandlePolicyUseCase(), analytics)
-	handleSubscribeUC := handlesubscribe.NewRootUseCase(db, analytics)
+	handleSubscribeUC := handlesubscribe.NewRootUseCase(database, analytics)
 	handleInlineUC := handleinline.NewHandleInlineUseCase(nugClient, analytics)
-	handleBroadcastUC := handlebroadcast.NewRootUseCase(db, analytics, broadcastSender, broadcastSender)
-	handleGroupchatUC := handlegroupchat.NewRootUseCase(db, analytics, logger, bot)
+	handleBroadcastUC := handlebroadcast.NewRootUseCase(database, analytics, broadcastSender, broadcastSender)
+	handleGroupchatUC := handlegroupchat.NewRootUseCase(database, analytics, logger, bot)
 
-	userMiddleware := middleware.NewHandleUserMiddleware(db, analytics)
+	userMiddleware := middleware.NewHandleUserMiddleware(database, analytics, deferredWrites)
 	messageController := controllers.NewMessageController(handleMessageRootUC)
 	commandController := controllers.NewCommandController(handleStrainUC, handlePolicyUC, handleSubscribeUC, analytics)
 	inlineController := controllers.NewInlineController(handleInlineUC, handleStrainUC)
@@ -95,6 +103,7 @@ func main() {
 	groupchatService := bgservices.NewHandleGroupchatService(handleGroupchatUC, logger)
 
 	go updateRouter.Run(ctx)
+
 	if utils.Env.IsLive() {
 		go broadcastService.RunEvery(ctx, pollBroadcastInterval())
 		go groupchatService.RunEvery(ctx, pollGroupchatInterval())
@@ -112,9 +121,12 @@ type telegramBroadcaster struct {
 	bot *tgbotapi.BotAPI
 }
 
-func (t *telegramBroadcaster) SendMessage(chatID int64, text string) error {
-	_, err := t.bot.Send(telegramHTMLMessage(chatID, text))
-	return err
+func (t *telegramBroadcaster) SendMessage(chatID int64, text string) (int64, error) {
+	msg, err := t.bot.Send(telegramHTMLMessage(chatID, text))
+	if err != nil {
+		return 0, err
+	}
+	return int64(msg.MessageID), nil
 }
 
 func telegramHTMLMessage(chatID int64, text string) tgbotapi.MessageConfig {
@@ -125,13 +137,16 @@ func telegramHTMLMessage(chatID int64, text string) tgbotapi.MessageConfig {
 	return m
 }
 
-func (t *telegramBroadcaster) SendQuiz(userID int64, question string, options []string, correctIndex int) error {
+func (t *telegramBroadcaster) SendQuiz(userID int64, question string, options []string, correctIndex int) (int64, error) {
 	quiz := tgbotapi.NewPoll(userID, question, options...)
 	quiz.Type = "quiz"
 	quiz.CorrectOptionID = int64(correctIndex)
 	quiz.IsAnonymous = false
-	_, err := t.bot.Send(quiz)
-	return err
+	msg, err := t.bot.Send(quiz)
+	if err != nil {
+		return 0, err
+	}
+	return int64(msg.MessageID), nil
 }
 
 func pollBroadcastInterval() time.Duration {

@@ -1,5 +1,5 @@
 /*
-Package routes/update receives raw Telegram updates and dispatches
+Package routes/update receives Telegram updates (long polling via UpdateRouter.Run) and dispatches
 to command/message/inline routes with injected middleware/controller chains.
 Workflow stage: transport routing (no business rules here).
 */
@@ -8,6 +8,8 @@ package routes
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -40,10 +42,19 @@ func NewUpdateRouter(
 	}
 }
 
+// Run receives updates via long polling only (getUpdates). There is no inbound HTTP webhook in this app.
+// We still call Telegram's deleteWebhook once so their servers forget any URL from an old bot config;
+// otherwise getUpdates can return nothing after a webhook was previously registered.
 func (r *UpdateRouter) Run(ctx context.Context) {
+	if _, err := r.bot.Request(tgbotapi.DeleteWebhookConfig{}); err != nil && r.log != nil {
+		r.log.Warn("could not clear Telegram webhook URL (getUpdates may fail if a webhook was set before): %v", err)
+	}
+
 	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 30
+	u.Timeout = getUpdatesTimeoutSeconds()
 	updates := r.bot.GetUpdatesChan(u)
+	defer r.bot.StopReceivingUpdates()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -52,14 +63,15 @@ func (r *UpdateRouter) Run(ctx context.Context) {
 			if !ok {
 				return
 			}
-			if err := r.handleUpdate(ctx, update); err != nil && r.log != nil {
-				r.log.Error("update handling failed: %v", err)
+			if err := r.HandleUpdate(ctx, update); err != nil && r.log != nil {
+				r.log.Error("handle update: %v", err)
 			}
 		}
 	}
 }
 
-func (r *UpdateRouter) handleUpdate(ctx context.Context, update tgbotapi.Update) error {
+// HandleUpdate processes a single update (long poll or tests).
+func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update) error {
 	if update.Message != nil {
 		user := middleware.TelegramUser{
 			TelegramID: update.Message.From.ID,
@@ -118,6 +130,22 @@ func (r *UpdateRouter) handleUpdate(ctx context.Context, update tgbotapi.Update)
 		return err
 	}
 	return nil
+}
+
+// getUpdatesTimeoutSeconds returns GET_UPDATES_TIMEOUT_SECONDS or 50 (Telegram API max 50).
+func getUpdatesTimeoutSeconds() int {
+	raw := strings.TrimSpace(os.Getenv("GET_UPDATES_TIMEOUT_SECONDS"))
+	if raw == "" {
+		return 50
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n <= 0 {
+		return 50
+	}
+	if n > 50 {
+		return 50
+	}
+	return n
 }
 
 func newHTMLMessageIfNeeded(chatID int64, text string) tgbotapi.MessageConfig {

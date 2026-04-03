@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"telegram-v2/utils"
+	"telegram-v2/utils/db"
 )
 
 func main() {
@@ -19,16 +20,16 @@ func main() {
 		panic(fmt.Errorf("read schema file: %w", err))
 	}
 
-	db, err := utils.DatabaseManager.Init(context.Background())
+	database, err := db.DatabaseManager.Init(context.Background())
 	if err != nil {
 		panic(fmt.Errorf("open db: %w", err))
 	}
-	defer db.Close()
+	defer database.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
-	if _, err := db.ExecContext(ctx, string(schema)); err != nil {
+	if _, err := database.ExecContext(ctx, string(schema)); err != nil {
 		panic(fmt.Errorf("apply schema: %w", err))
 	}
 

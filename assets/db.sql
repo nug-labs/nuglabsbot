@@ -54,9 +54,13 @@ CREATE TABLE IF NOT EXISTS broadcast_outgoing (
   user_id BIGINT NOT NULL,
   scheduled_at TIMESTAMPTZ,
   sent_time TIMESTAMPTZ,
+  telegram_message_id BIGINT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (broadcast_id, user_id)
 );
+
+-- Existing databases: add column if missing (safe to run repeatedly on PG 11+).
+ALTER TABLE broadcast_outgoing ADD COLUMN IF NOT EXISTS telegram_message_id BIGINT;
 
 CREATE TABLE IF NOT EXISTS app_analytics (
   id BIGSERIAL PRIMARY KEY,

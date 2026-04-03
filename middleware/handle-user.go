@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"telegram-v2/utils"
+	"telegram-v2/utils/db"
 )
 
 type TelegramUser struct {
@@ -21,12 +22,13 @@ type TelegramUser struct {
 }
 
 type HandleUserMiddleware struct {
-	db        utils.DB
+	store     db.DB
 	analytics *utils.Analytics
+	deferred  *db.DeferredWriteQueue
 }
 
-func NewHandleUserMiddleware(db utils.DB, analytics *utils.Analytics) *HandleUserMiddleware {
-	return &HandleUserMiddleware{db: db, analytics: analytics}
+func NewHandleUserMiddleware(store db.DB, analytics *utils.Analytics, deferred *db.DeferredWriteQueue) *HandleUserMiddleware {
+	return &HandleUserMiddleware{store: store, analytics: analytics, deferred: deferred}
 }
 
 func (m *HandleUserMiddleware) EnsureUser(ctx context.Context, u TelegramUser) error {
@@ -41,7 +43,19 @@ func (m *HandleUserMiddleware) EnsureUser(ctx context.Context, u TelegramUser) e
 		return fmt.Errorf("We are not sure you're a real user 🫤")
 	}
 
-	_, err := m.db.ExecContext(
+	if m.deferred != nil {
+		uCopy := u
+		if err := m.deferred.Enqueue(func(c context.Context, conn db.DB) error {
+			return upsertUser(c, conn, uCopy)
+		}); err == nil {
+			return nil
+		}
+	}
+	return upsertUser(ctx, m.store, u)
+}
+
+func upsertUser(ctx context.Context, conn db.DB, u TelegramUser) error {
+	_, err := conn.ExecContext(
 		ctx,
 		`INSERT INTO users (telegram_id, username, first_name, last_name, total_requests, last_seen_at)
 		 VALUES ($1, $2, $3, $4, 1, $5)

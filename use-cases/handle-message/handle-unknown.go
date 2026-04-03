@@ -12,26 +12,29 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
+
 	"telegram-v2/utils"
+	"telegram-v2/utils/db"
 )
 
 type HandleUnknownUseCase struct {
-	db        utils.DB
+	store     db.DB
 	analytics *utils.Analytics
 }
 
-func NewHandleUnknownUseCase(db utils.DB, analytics *utils.Analytics) *HandleUnknownUseCase {
-	return &HandleUnknownUseCase{db: db, analytics: analytics}
+func NewHandleUnknownUseCase(store db.DB, analytics *utils.Analytics) *HandleUnknownUseCase {
+	return &HandleUnknownUseCase{store: store, analytics: analytics}
 }
 
 func (u *HandleUnknownUseCase) Handle(ctx context.Context, actorUserID, chatID int64, input string) (string, error) {
 	key := normalizeKey(input)
-	msg, err := lookupResponse(ctx, u.db, key)
+	msg, err := lookupResponse(ctx, u.store, key)
 	if err != nil {
 		return "", err
 	}
 	if msg == "" {
-		msg, err = lookupResponse(ctx, u.db, "default")
+		msg, err = lookupResponse(ctx, u.store, "default")
 		if err != nil {
 			return "", err
 		}
@@ -57,12 +60,12 @@ func normalizeKey(in string) string {
 	return out
 }
 
-func lookupResponse(ctx context.Context, db utils.DB, key string) (string, error) {
+func lookupResponse(ctx context.Context, conn db.DB, key string) (string, error) {
 	if key == "" {
 		return "", nil
 	}
 	var message string
-	err := db.QueryRowContext(ctx, `SELECT message FROM responses WHERE key = $1`, key).Scan(&message)
+	err := conn.QueryRowContext(ctx, `SELECT message FROM responses WHERE key = $1`, 2*time.Minute, key).Scan(&message)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil
 	}

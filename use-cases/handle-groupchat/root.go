@@ -18,6 +18,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"telegram-v2/utils"
+	"telegram-v2/utils/db"
 )
 
 type TelegramGroupClient interface {
@@ -25,14 +26,14 @@ type TelegramGroupClient interface {
 }
 
 type RootUseCase struct {
-	db        utils.DB
+	store     db.DB
 	analytics *utils.Analytics
 	logger    *utils.Logger
 	telegram  TelegramGroupClient
 }
 
-func NewRootUseCase(db utils.DB, analytics *utils.Analytics, logger *utils.Logger, telegram TelegramGroupClient) *RootUseCase {
-	return &RootUseCase{db: db, analytics: analytics, logger: logger, telegram: telegram}
+func NewRootUseCase(store db.DB, analytics *utils.Analytics, logger *utils.Logger, telegram TelegramGroupClient) *RootUseCase {
+	return &RootUseCase{store: store, analytics: analytics, logger: logger, telegram: telegram}
 }
 
 func (u *RootUseCase) RunOnce() error {
@@ -78,7 +79,7 @@ func (u *RootUseCase) RunOnce() error {
 			}
 			continue
 		}
-		if _, err := u.db.ExecContext(
+		if _, err := u.store.ExecContext(
 			ctx,
 			`INSERT INTO broadcast_outgoing (broadcast_id, user_id, scheduled_at)
 			 VALUES ($1, $2, NOW())
@@ -87,7 +88,7 @@ func (u *RootUseCase) RunOnce() error {
 		); err != nil {
 			continue
 		}
-		_, _ = u.db.ExecContext(
+		_, _ = u.store.ExecContext(
 			ctx,
 			`INSERT INTO group_outreach_log (user_id, last_sent_at)
 			 VALUES ($1, NOW())
@@ -110,7 +111,7 @@ type requiredGroup struct {
 }
 
 func (u *RootUseCase) loadRequiredGroups(ctx context.Context) ([]requiredGroup, error) {
-	rows, err := u.db.QueryContext(ctx, `SELECT chat_id, invite_link FROM required_groups WHERE enabled = TRUE ORDER BY chat_id ASC`)
+	rows, err := u.store.QueryContext(ctx, `SELECT chat_id, invite_link FROM required_groups WHERE enabled = TRUE ORDER BY chat_id ASC`, 30*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +130,7 @@ func (u *RootUseCase) loadRequiredGroups(ctx context.Context) ([]requiredGroup, 
 }
 
 func (u *RootUseCase) loadKnownUsers(ctx context.Context) ([]int64, error) {
-	rows, err := u.db.QueryContext(ctx, `SELECT telegram_id FROM users ORDER BY telegram_id ASC`)
+	rows, err := u.store.QueryContext(ctx, `SELECT telegram_id FROM users ORDER BY telegram_id ASC`, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +148,7 @@ func (u *RootUseCase) loadKnownUsers(ctx context.Context) ([]int64, error) {
 
 func (u *RootUseCase) canOutreachUser(ctx context.Context, userID int64, cooldown time.Duration) (bool, error) {
 	var lastSent time.Time
-	err := u.db.QueryRowContext(ctx, `SELECT last_sent_at FROM group_outreach_log WHERE user_id = $1`, userID).Scan(&lastSent)
+	err := u.store.QueryRowContext(ctx, `SELECT last_sent_at FROM group_outreach_log WHERE user_id = $1`, 0, userID).Scan(&lastSent)
 	if err == sql.ErrNoRows {
 		return true, nil
 	}
@@ -164,9 +165,10 @@ func (u *RootUseCase) ensureMessageBroadcast(ctx context.Context, message string
 	}
 	payload := string(payloadRaw)
 	var id string
-	err = u.db.QueryRowContext(
+	err = u.store.QueryRowContext(
 		ctx,
 		`SELECT id FROM broadcasts WHERE type = 'message' AND payload = $1::jsonb ORDER BY created_at ASC LIMIT 1`,
+		0,
 		payload,
 	).Scan(&id)
 	if err == nil {
@@ -176,7 +178,7 @@ func (u *RootUseCase) ensureMessageBroadcast(ctx context.Context, message string
 		return "", err
 	}
 	id = fmt.Sprintf("group-outreach-%d", time.Now().UTC().UnixNano())
-	_, err = u.db.ExecContext(
+	_, err = u.store.ExecContext(
 		ctx,
 		`INSERT INTO broadcasts (id, type, payload, created_at) VALUES ($1, 'message', $2::jsonb, $3)`,
 		id, payload, time.Now().UTC(),

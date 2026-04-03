@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"telegram-v2/utils"
+	"telegram-v2/utils/db"
 )
 
 func main() {
@@ -18,17 +19,17 @@ func main() {
 		panic(err)
 	}
 
-	db, err := utils.DatabaseManager.Init(context.Background())
+	database, err := db.DatabaseManager.Init(context.Background())
 	if err != nil {
 		panic(fmt.Errorf("open db: %w", err))
 	}
-	defer db.Close()
+	defer database.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	for key, message := range entries {
-		_, err = db.ExecContext(
+		_, err = database.ExecContext(
 			ctx,
 			`INSERT INTO responses (key, message)
 			 VALUES ($1, $2)

@@ -1,17 +1,17 @@
 /*
-Package utils analytics persists events to app_analytics.
-Injected from composition root into use-cases; emit TrackEvent at decision points.
-TrackBroadcast was removed — callers use TrackEvent with name "broadcast" and meta.type.
+Package utils analytics provides an in-memory queue for events; bg-services/handle-events
+persists to app_analytics so update handlers are not blocked on DB inserts.
 See analytics.md in the telegram-v2 module root for the full event catalog.
 */
 package utils
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 )
+
+const analyticsQueueSize = 2048
 
 type AnalyticsEvent struct {
 	Name      string
@@ -23,8 +23,8 @@ type AnalyticsEvent struct {
 }
 
 type Analytics struct {
-	db  *Database
-	log *Logger
+	log   *Logger
+	queue chan AnalyticsEvent
 }
 
 type AnalyticsFactory struct{}
@@ -35,12 +35,31 @@ func NewAnalyticsFactory() *AnalyticsFactory {
 	return &AnalyticsFactory{}
 }
 
-func (f *AnalyticsFactory) Init(db *Database, log *Logger) *Analytics {
-	return NewAnalytics(db, log)
+func (f *AnalyticsFactory) Init(log *Logger) *Analytics {
+	return &Analytics{
+		log:   log,
+		queue: make(chan AnalyticsEvent, analyticsQueueSize),
+	}
 }
 
-func NewAnalytics(db *Database, log *Logger) *Analytics {
-	return &Analytics{db: db, log: log}
+// Next blocks until an event is available or ctx is canceled.
+func (a *Analytics) Next(ctx context.Context) (AnalyticsEvent, error) {
+	select {
+	case <-ctx.Done():
+		return AnalyticsEvent{}, ctx.Err()
+	case e := <-a.queue:
+		return e, nil
+	}
+}
+
+// TryDequeue returns one queued event if available without blocking.
+func (a *Analytics) TryDequeue() (AnalyticsEvent, bool) {
+	select {
+	case e := <-a.queue:
+		return e, true
+	default:
+		return AnalyticsEvent{}, false
+	}
 }
 
 // MetaWithChatID builds meta with chat_id set last (Telegram chat where the update occurred). AnalyticsEvent.UserID should be the actor (From.ID).
@@ -56,27 +75,15 @@ func MetaWithChatID(chatID int64, fields map[string]any) map[string]any {
 	return out
 }
 
+// TrackEvent enqueues an event for async persistence. Returns an error only if the queue is full.
 func (a *Analytics) TrackEvent(ctx context.Context, e AnalyticsEvent) error {
-	if e.Timestamp.IsZero() {
-		e.Timestamp = time.Now().UTC()
-	}
-
-	meta, err := json.Marshal(e.Meta)
-	if err != nil {
-		return fmt.Errorf("marshal analytics meta: %w", err)
-	}
-
-	_, err = a.db.ExecContext(
-		ctx,
-		`INSERT INTO app_analytics (event_name, user_id, entity_id, event_status, event_at, meta)
-		 VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
-		e.Name, e.UserID, e.EntityID, e.Status, e.Timestamp, string(meta),
-	)
-	if err != nil {
+	select {
+	case a.queue <- e:
+		return nil
+	default:
 		if a.log != nil {
-			a.log.Warn("analytics event dropped: %v", err)
+			a.log.Warn("analytics queue full, dropped event %q", e.Name)
 		}
-		return err
+		return fmt.Errorf("analytics queue full")
 	}
-	return nil
 }

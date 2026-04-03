@@ -6,6 +6,8 @@ Workflow stage: process startup configuration loading.
 package utils
 
 import (
+	"bufio"
+	"fmt"
 	"os"
 	"strings"
 
@@ -41,13 +43,32 @@ func (e *EnvManager) Init() {
 	}
 }
 
-// InitOps keeps existing shell values and only backfills from env files.
+// InitOps is for zz-ops CLIs: keeps existing shell values and only backfills missing keys from env files.
+// If DATABASE_URL is unset and APP_ENV is unset, prompts on an interactive terminal: "Use live .env [y/N]"
+// (default N → .env.test); non-TTY defaults to .env.test. Preset APP_ENV or DATABASE_URL skips the prompt.
 func (e *EnvManager) InitOps() {
 	if strings.TrimSpace(os.Getenv("DATABASE_URL")) != "" {
 		return
 	}
-	appEnv := strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV")))
-	switch appEnv {
+
+	appEnv := strings.TrimSpace(os.Getenv("APP_ENV"))
+	if appEnv == "" {
+		if stdinIsTTY() {
+			fmt.Fprintf(os.Stderr, "Use live .env [y/N]: ")
+			line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+			line = strings.TrimSpace(strings.ToLower(line))
+			if line == "y" || line == "yes" {
+				appEnv = "live"
+			} else {
+				appEnv = "test"
+			}
+		} else {
+			appEnv = "test"
+		}
+		_ = os.Setenv("APP_ENV", appEnv)
+	}
+
+	switch strings.ToLower(appEnv) {
 	case "", "test":
 		_ = readEnvFileNoOverride(".env.test")
 		if strings.TrimSpace(os.Getenv("DATABASE_URL")) == "" {
@@ -56,6 +77,14 @@ func (e *EnvManager) InitOps() {
 	default:
 		_ = readEnvFileNoOverride(".env")
 	}
+}
+
+func stdinIsTTY() bool {
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return fi.Mode()&os.ModeCharDevice != 0
 }
 
 func readEnvFileNoOverride(path string) error {

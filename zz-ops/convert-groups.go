@@ -1,6 +1,6 @@
 /*
 convert-groups loads assets/groups.yml into the required_groups table.
-Same pattern as convert-whitelist-yml / convert-broadcasts-yml: utils.Env.InitOps + DatabaseManager.Init.
+Same pattern as convert-whitelist-yml / convert-broadcasts-yml: utils.Env.InitOps + db.DatabaseManager.Init.
 Run from repo root: go run ./zz-ops/convert-groups.go (working directory app/telegram-v2).
 */
 package main
@@ -15,6 +15,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 	"telegram-v2/utils"
+	"telegram-v2/utils/db"
 )
 
 type groupRow struct {
@@ -37,11 +38,11 @@ func main() {
 		panic(fmt.Errorf("parse groups yaml: %w", err))
 	}
 
-	db, err := utils.DatabaseManager.Init(context.Background())
+	database, err := db.DatabaseManager.Init(context.Background())
 	if err != nil {
 		panic(fmt.Errorf("open db: %w", err))
 	}
-	defer db.Close()
+	defer database.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -50,7 +51,7 @@ func main() {
 		if g.ChatID == 0 || g.InviteLink == "" {
 			continue
 		}
-		_, err := db.ExecContext(
+		_, err := database.ExecContext(
 			ctx,
 			`INSERT INTO required_groups (chat_id, title, invite_link, enabled, updated_at)
 			 VALUES ($1, $2, $3, $4, NOW())

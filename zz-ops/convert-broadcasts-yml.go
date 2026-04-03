@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"telegram-v2/utils"
+	"telegram-v2/utils/db"
 )
 
 type frontMatter struct {
@@ -29,11 +30,11 @@ func main() {
 		panic(fmt.Errorf("read broadcasts dir: %w", err))
 	}
 
-	db, err := utils.DatabaseManager.Init(context.Background())
+	database, err := db.DatabaseManager.Init(context.Background())
 	if err != nil {
 		panic(fmt.Errorf("open db: %w", err))
 	}
-	defer db.Close()
+	defer database.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -49,7 +50,7 @@ func main() {
 		}
 
 		path := filepath.Join(broadcastDir, name)
-		if err := upsertBroadcastAndSeedOutgoing(ctx, db, path); err != nil {
+		if err := upsertBroadcastAndSeedOutgoing(ctx, database, path); err != nil {
 			panic(err)
 		}
 		loaded++
@@ -58,7 +59,7 @@ func main() {
 	fmt.Printf("loaded %d broadcasts\n", loaded)
 }
 
-func upsertBroadcastAndSeedOutgoing(ctx context.Context, db *utils.Database, path string) error {
+func upsertBroadcastAndSeedOutgoing(ctx context.Context, database *db.Database, path string) error {
 	var meta frontMatter
 	var payload map[string]any
 	if err := utils.ParseFrontMatterYAML(path, &meta, &payload); err != nil {
@@ -84,7 +85,7 @@ func upsertBroadcastAndSeedOutgoing(ctx context.Context, db *utils.Database, pat
 		scheduledAt = t
 	}
 
-	tx, err := db.SQL().BeginTx(ctx, nil)
+	tx, err := database.SQL().BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx for %q: %w", meta.ID, err)
 	}
@@ -105,25 +106,40 @@ func upsertBroadcastAndSeedOutgoing(ctx context.Context, db *utils.Database, pat
 		return fmt.Errorf("upsert broadcast %q: %w", meta.ID, err)
 	}
 
-	userFilter := "TRUE"
-	switch strings.ToLower(strings.TrimSpace(meta.Audience)) {
-	case "active_users":
-		userFilter = "total_requests > 0"
-	case "all":
-		userFilter = "TRUE"
+	var duplicateBody bool
+	if err := tx.QueryRowContext(ctx,
+		`SELECT EXISTS (
+			SELECT 1 FROM broadcasts
+			WHERE payload = $1::jsonb AND id <> $2
+		)`,
+		string(payloadJSON), meta.ID,
+	).Scan(&duplicateBody); err != nil {
+		return fmt.Errorf("check duplicate broadcast body %q: %w", meta.ID, err)
 	}
 
-	seedQuery := fmt.Sprintf(
-		`INSERT INTO broadcast_outgoing (broadcast_id, user_id, scheduled_at, sent_time)
-		 SELECT $1, u.telegram_id, $2, NULL
-		 FROM users u
-		 WHERE %s
-		 ON CONFLICT (broadcast_id, user_id) DO NOTHING`,
-		userFilter,
-	)
+	if duplicateBody {
+		fmt.Printf("skip broadcast_outgoing for %s: same payload already exists on another broadcast id\n", meta.ID)
+	} else {
+		userFilter := "TRUE"
+		switch strings.ToLower(strings.TrimSpace(meta.Audience)) {
+		case "active_users":
+			userFilter = "total_requests > 0"
+		case "all":
+			userFilter = "TRUE"
+		}
 
-	if _, err := tx.ExecContext(ctx, seedQuery, meta.ID, scheduledAt); err != nil {
-		return fmt.Errorf("seed outgoing for %q: %w", meta.ID, err)
+		seedQuery := fmt.Sprintf(
+			`INSERT INTO broadcast_outgoing (broadcast_id, user_id, scheduled_at, sent_time)
+			 SELECT $1, u.telegram_id, $2, NULL
+			 FROM users u
+			 WHERE %s
+			 ON CONFLICT (broadcast_id, user_id) DO NOTHING`,
+			userFilter,
+		)
+
+		if _, err := tx.ExecContext(ctx, seedQuery, meta.ID, scheduledAt); err != nil {
+			return fmt.Errorf("seed outgoing for %q: %w", meta.ID, err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

@@ -1,6 +1,6 @@
 /*
 convert-whitelist-yml loads assets/whitelist.yml via utils.ParseSimpleListYAML,
-connects with utils.Env.InitOps + utils.DatabaseManager.Init, and upserts domains into whitelist.
+connects with utils.Env.InitOps + db.DatabaseManager.Init, and upserts domains into whitelist.
 Stand-alone zz-ops entrypoint (not the Telegram binary).
 */
 package main
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"telegram-v2/utils"
+	"telegram-v2/utils/db"
 )
 
 func main() {
@@ -23,17 +24,17 @@ func main() {
 		panic(err)
 	}
 
-	db, err := utils.DatabaseManager.Init(context.Background())
+	database, err := db.DatabaseManager.Init(context.Background())
 	if err != nil {
 		panic(fmt.Errorf("open db: %w", err))
 	}
-	defer db.Close()
+	defer database.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	for _, domain := range domains {
-		_, err = db.ExecContext(
+		_, err = database.ExecContext(
 			ctx,
 			`INSERT INTO whitelist (domain)
 			 VALUES ($1)

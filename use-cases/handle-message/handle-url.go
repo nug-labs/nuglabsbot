@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"telegram-v2/utils"
+	"telegram-v2/utils/db"
 )
 
 type urlStrainClient interface {
@@ -29,20 +30,20 @@ type urlStrainClient interface {
 }
 
 type HandleURLUseCase struct {
-	db            utils.DB
+	store         db.DB
 	analytics     *utils.Analytics
 	nuglabsClient urlStrainClient
 	logger        *utils.Logger
 }
 
 func NewHandleURLUseCase(
-	db utils.DB,
+	store db.DB,
 	analytics *utils.Analytics,
 	nuglabsClient urlStrainClient,
 	logger *utils.Logger,
 ) *HandleURLUseCase {
 	return &HandleURLUseCase{
-		db:            db,
+		store:         store,
 		analytics:     analytics,
 		nuglabsClient: nuglabsClient,
 		logger:        logger,
@@ -268,7 +269,7 @@ func parseStrainJSONArray(text string) []string {
 }
 
 func (u *HandleURLUseCase) isWhitelisted(ctx context.Context, rawURL string, host string) (bool, error) {
-	rows, err := u.db.QueryContext(ctx, `SELECT domain FROM whitelist`)
+	rows, err := u.store.QueryContext(ctx, `SELECT domain FROM whitelist`, 5*time.Minute)
 	if err != nil {
 		return false, err
 	}

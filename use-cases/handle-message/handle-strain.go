@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"telegram-v2/utils"
+	"telegram-v2/utils/db"
 	"time"
 )
 
@@ -23,12 +24,12 @@ type strainClient interface {
 type HandleStrainUseCase struct {
 	nuglabsClient any
 	analytics     *utils.Analytics
-	db            utils.DB
+	store         db.DB
 	logger        *utils.Logger
 }
 
-func NewHandleStrainUseCase(nuglabsClient any, analytics *utils.Analytics, db utils.DB, logger *utils.Logger) *HandleStrainUseCase {
-	return &HandleStrainUseCase{nuglabsClient: nuglabsClient, analytics: analytics, db: db, logger: logger}
+func NewHandleStrainUseCase(nuglabsClient any, analytics *utils.Analytics, store db.DB, logger *utils.Logger) *HandleStrainUseCase {
+	return &HandleStrainUseCase{nuglabsClient: nuglabsClient, analytics: analytics, store: store, logger: logger}
 }
 
 func (u *HandleStrainUseCase) Handle(ctx context.Context, actorUserID, chatID int64, input string) (string, error) {
@@ -316,13 +317,14 @@ func anyToString(v any) string {
 }
 
 func (u *HandleStrainUseCase) enqueueSubscriptionBroadcasts(ctx context.Context, message string) error {
-	if u.db == nil || strings.TrimSpace(message) == "" {
+	if u.store == nil || strings.TrimSpace(message) == "" {
 		return nil
 	}
 
-	rows, err := u.db.QueryContext(
+	rows, err := u.store.QueryContext(
 		ctx,
 		`SELECT telegram_id FROM subscriptions WHERE enabled = TRUE ORDER BY telegram_id ASC`,
+		0,
 	)
 	if err != nil {
 		return err
@@ -351,7 +353,7 @@ func (u *HandleStrainUseCase) enqueueSubscriptionBroadcasts(ctx context.Context,
 			}
 			continue
 		}
-		if _, err := u.db.ExecContext(
+		if _, err := u.store.ExecContext(
 			ctx,
 			`INSERT INTO broadcast_outgoing (broadcast_id, user_id, scheduled_at) VALUES ($1, $2, $3)`,
 			broadcastID, telegramID, now,
@@ -375,9 +377,10 @@ func (u *HandleStrainUseCase) enqueueSubscriptionBroadcasts(ctx context.Context,
 
 func (u *HandleStrainUseCase) ensureBroadcastForPayload(ctx context.Context, now time.Time, payload string, idx int64, telegramID int64) (string, error) {
 	var existingID string
-	err := u.db.QueryRowContext(
+	err := u.store.QueryRowContext(
 		ctx,
 		`SELECT id FROM broadcasts WHERE type = 'message' AND payload = $1::jsonb ORDER BY created_at ASC LIMIT 1`,
+		0,
 		payload,
 	).Scan(&existingID)
 	if err == nil && existingID != "" {
@@ -387,7 +390,7 @@ func (u *HandleStrainUseCase) ensureBroadcastForPayload(ctx context.Context, now
 		return "", err
 	}
 	broadcastID := fmt.Sprintf("strain-%d-%d-%d", now.UnixNano(), telegramID, idx)
-	if _, err := u.db.ExecContext(
+	if _, err := u.store.ExecContext(
 		ctx,
 		`INSERT INTO broadcasts (id, type, payload, created_at) VALUES ($1, 'message', $2::jsonb, $3)`,
 		broadcastID, payload, now,

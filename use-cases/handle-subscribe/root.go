@@ -10,27 +10,29 @@ import (
 	"errors"
 
 	"telegram-v2/utils"
+	"telegram-v2/utils/db"
 )
 
 type RootUseCase struct {
-	db        utils.DB
+	store     db.DB
 	analytics *utils.Analytics
 }
 
-func NewRootUseCase(db utils.DB, analytics *utils.Analytics) *RootUseCase {
-	return &RootUseCase{db: db, analytics: analytics}
+func NewRootUseCase(store db.DB, analytics *utils.Analytics) *RootUseCase {
+	return &RootUseCase{store: store, analytics: analytics}
 }
 
 func (u *RootUseCase) Handle(ctx context.Context, chatID int64) (string, error) {
 	var enabled bool
-	err := u.db.QueryRowContext(
+	err := u.store.QueryRowContext(
 		ctx,
 		`SELECT enabled FROM subscriptions WHERE telegram_id = $1`,
+		0,
 		chatID,
 	).Scan(&enabled)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		_, insErr := u.db.ExecContext(
+		_, insErr := u.store.ExecContext(
 			ctx,
 			`INSERT INTO subscriptions (telegram_id, enabled) VALUES ($1, TRUE)
 			 ON CONFLICT (telegram_id) DO UPDATE SET enabled = TRUE, updated_at = NOW()`,
@@ -51,7 +53,7 @@ func (u *RootUseCase) Handle(ctx context.Context, chatID int64) (string, error) 
 	}
 
 	nextEnabled := !enabled
-	_, err = u.db.ExecContext(
+	_, err = u.store.ExecContext(
 		ctx,
 		`UPDATE subscriptions SET enabled = $2, updated_at = NOW() WHERE telegram_id = $1`,
 		chatID, nextEnabled,
