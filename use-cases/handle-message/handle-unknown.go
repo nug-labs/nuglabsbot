@@ -16,27 +16,22 @@ import (
 )
 
 type HandleUnknownUseCase struct {
-	db        any
+	db        utils.DB
 	analytics *utils.Analytics
 }
 
-func NewHandleUnknownUseCase(db any, analytics *utils.Analytics) *HandleUnknownUseCase {
+func NewHandleUnknownUseCase(db utils.DB, analytics *utils.Analytics) *HandleUnknownUseCase {
 	return &HandleUnknownUseCase{db: db, analytics: analytics}
 }
 
-func (u *HandleUnknownUseCase) Handle(ctx context.Context, input string) (string, error) {
-	db, ok := u.db.(utils.DB)
-	if !ok {
-		return "Unknown query", nil
-	}
-
+func (u *HandleUnknownUseCase) Handle(ctx context.Context, actorUserID, chatID int64, input string) (string, error) {
 	key := normalizeKey(input)
-	msg, err := lookupResponse(ctx, db, key)
+	msg, err := lookupResponse(ctx, u.db, key)
 	if err != nil {
 		return "", err
 	}
 	if msg == "" {
-		msg, err = lookupResponse(ctx, db, "default")
+		msg, err = lookupResponse(ctx, u.db, "default")
 		if err != nil {
 			return "", err
 		}
@@ -47,8 +42,9 @@ func (u *HandleUnknownUseCase) Handle(ctx context.Context, input string) (string
 
 	_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
 		Name:   "unknown-response",
+		UserID: actorUserID,
 		Status: "ok",
-		Meta:   map[string]any{"key": key},
+		Meta:   utils.MetaWithChatID(chatID, map[string]any{"key": key}),
 	})
 	return msg, nil
 }

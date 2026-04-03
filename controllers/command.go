@@ -1,22 +1,23 @@
-// Understand if /start, /start=strain+name
-// Other options include /privacy-policy, /terms-of-service, /help, /about, /contact, /feedback, /support, /faq, /legal
-// All of these other than strain deeplink should be md files returned from assets/policies/*.md please
-// Strain deeplink is handle-message/handle-strain use-case
-// Otherwise I guess it is handle-command/handle-policy use-case
+/*
+CommandController maps normalized Telegram commands to handlers.
+/start deep links → strain use-case; other commands → policy root (HTML) or subscribe.
+Emits command-requested analytics. Injected from app.go with routes/command as entry.
+*/
 
 package controllers
 
 import (
 	"context"
 	"strings"
+	"telegram-v2/utils"
 )
 
 type StrainHandler interface {
-	Handle(ctx context.Context, input string) (string, error)
+	Handle(ctx context.Context, actorUserID, chatID int64, input string) (string, error)
 }
 
 type PolicyHandler interface {
-	Handle(ctx context.Context, policyName string) (string, error)
+	Handle(ctx context.Context, actorUserID, chatID int64, policyName string) (string, error)
 }
 
 type SubscribeHandler interface {
@@ -27,50 +28,55 @@ type CommandController struct {
 	strainHandler    StrainHandler
 	policyHandler    PolicyHandler
 	subscribeHandler SubscribeHandler
+	analytics        *utils.Analytics
 }
 
-func NewCommandController(strainHandler StrainHandler, policyHandler PolicyHandler, subscribeHandler SubscribeHandler) *CommandController {
+func NewCommandController(strainHandler StrainHandler, policyHandler PolicyHandler, subscribeHandler SubscribeHandler, analytics *utils.Analytics) *CommandController {
 	return &CommandController{
 		strainHandler:    strainHandler,
 		policyHandler:    policyHandler,
 		subscribeHandler: subscribeHandler,
+		analytics:        analytics,
 	}
 }
 
-func (c *CommandController) Handle(ctx context.Context, chatID int64, command string, argument string) (string, error) {
-	cmd := strings.ToLower(strings.TrimSpace(command))
+func (c *CommandController) Handle(ctx context.Context, actorUserID, chatID int64, command string, argument string) (string, error) {
+	cmd := strings.ToLower(strings.TrimSpace(strings.TrimPrefix(command, "/")))
 	arg := strings.TrimSpace(argument)
 
-	if cmd == "/start" && arg != "" {
-		normalized := strings.ReplaceAll(arg, "-", " ")
-		return c.strainHandler.Handle(ctx, normalized)
-	}
-	if cmd == "/start" {
-		if chatID < 0 {
-			return "", nil
-		}
-		return c.policyHandler.Handle(ctx, "start")
-	}
-
-	if strings.HasPrefix(cmd, "/") {
-		cmd = strings.TrimPrefix(cmd, "/")
+	if c.analytics != nil {
+		_ = c.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
+			Name:   "command-requested",
+			UserID: actorUserID,
+			Status: "ok",
+			Meta: utils.MetaWithChatID(chatID, map[string]any{
+				"command": cmd,
+				"has_arg": arg != "",
+			}),
+		})
 	}
 
 	switch cmd {
-	case "subscribe":
-		if c.subscribeHandler == nil {
-			return "Subscriptions are unavailable right now.", nil
+	case "start":
+		if arg != "" {
+			normalized := strings.ReplaceAll(arg, "-", " ")
+			return c.strainHandler.Handle(ctx, actorUserID, chatID, normalized)
 		}
+		if chatID < 0 {
+			return "", nil
+		}
+		return c.policyHandler.Handle(ctx, actorUserID, chatID, "start")
+	case "subscribe":
 		return c.subscribeHandler.Handle(ctx, chatID)
 	case "help":
-		return c.policyHandler.Handle(ctx, "help")
+		return c.policyHandler.Handle(ctx, actorUserID, chatID, "help")
 	case "about":
-		return c.policyHandler.Handle(ctx, "about")
+		return c.policyHandler.Handle(ctx, actorUserID, chatID, "about")
 	case "legal":
-		return c.policyHandler.Handle(ctx, "legal")
+		return c.policyHandler.Handle(ctx, actorUserID, chatID, "legal")
 	case "links":
-		return c.policyHandler.Handle(ctx, "links")
+		return c.policyHandler.Handle(ctx, actorUserID, chatID, "links")
 	default:
-		return c.policyHandler.Handle(ctx, "help")
+		return c.policyHandler.Handle(ctx, actorUserID, chatID, "help")
 	}
 }

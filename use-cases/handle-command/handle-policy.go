@@ -1,4 +1,7 @@
-// Determine which policy and which html file to return from assets/policies/*.html
+/*
+handle-policy loads Telegram-safe HTML from assets/policies/<name>.html.
+Used via RootUseCase so policy-requested analytics fire in one place.
+*/
 
 package handlecommand
 
@@ -8,15 +11,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"telegram-v2/utils"
 )
 
-type HandlePolicyUseCase struct {
-	analytics *utils.Analytics
-}
+type HandlePolicyUseCase struct{}
 
-func NewHandlePolicyUseCase(analytics *utils.Analytics) *HandlePolicyUseCase {
-	return &HandlePolicyUseCase{analytics: analytics}
+func NewHandlePolicyUseCase() *HandlePolicyUseCase {
+	return &HandlePolicyUseCase{}
 }
 
 func (u *HandlePolicyUseCase) Handle(ctx context.Context, policyName string) (string, error) {

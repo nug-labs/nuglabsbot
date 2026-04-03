@@ -1,7 +1,7 @@
-// One middleware is injected the db stub
-// Sees if user telegram ID is in the table
-// If not, create user record
-// If yes increment total request count and last_seen timestamp
+/*
+HandleUserMiddleware upserts users on each routed update (commands, messages, inline).
+Optional analytics records invalid Telegram payloads (zero ID).
+*/
 
 package middleware
 
@@ -21,16 +21,24 @@ type TelegramUser struct {
 }
 
 type HandleUserMiddleware struct {
-	db utils.DB
+	db        utils.DB
+	analytics *utils.Analytics
 }
 
-func NewHandleUserMiddleware(db utils.DB) *HandleUserMiddleware {
-	return &HandleUserMiddleware{db: db}
+func NewHandleUserMiddleware(db utils.DB, analytics *utils.Analytics) *HandleUserMiddleware {
+	return &HandleUserMiddleware{db: db, analytics: analytics}
 }
 
 func (m *HandleUserMiddleware) EnsureUser(ctx context.Context, u TelegramUser) error {
 	if u.TelegramID == 0 {
-		return fmt.Errorf("telegram id is required")
+		if m.analytics != nil {
+			_ = m.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
+				Name:   "user-ensure-rejected",
+				Status: "invalid",
+				Meta:   map[string]any{"reason": "zero_telegram_id"},
+			})
+		}
+		return fmt.Errorf("We are not sure you're a real user 🫤")
 	}
 
 	_, err := m.db.ExecContext(

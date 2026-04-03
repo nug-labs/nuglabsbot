@@ -16,6 +16,5 @@ RUN apk add --no-cache ca-certificates
 COPY --from=builder /out/telegram-v2 /app/telegram-v2
 COPY --from=builder /src/assets /app/assets
 
-ENV APP_ENV=live
-
+# APP_ENV comes from --env-file (live: APP_ENV=live). Unset defaults to test file semantics in Env.Init for local .env files.
 CMD ["/app/telegram-v2"]

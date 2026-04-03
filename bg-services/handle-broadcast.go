@@ -1,10 +1,7 @@
-// Has db util injected into it, service inits a listener poller once a minute reads from broadcast table
-// zz-ops/convert-broadcasts-yml converts our assets/broadcasts yml files into table rows
-// It is a separate stand-alone helper script that is not part of the main app
-// This is so the app is always running during updating the broadcasts
-
-// handle-broadcast.go is the main service that handles the broadcast logic
-// It is responsible for the scheduling / running of handle-broadcasts/root.go in a minute loop
+/*
+bg-services/handle-broadcast runs the broadcast_outgoing sender on an interval.
+Started from app.go only when APP_ENV=live. zz-ops/convert-broadcasts-yml loads scheduled rows.
+*/
 
 package bgservices
 

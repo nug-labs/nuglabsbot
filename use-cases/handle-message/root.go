@@ -28,19 +28,19 @@ func NewRootUseCase(
 	}
 }
 
-func (u *RootUseCase) Handle(ctx context.Context, input string) (string, error) {
+func (u *RootUseCase) Handle(ctx context.Context, actorUserID, chatID int64, input string) (string, error) {
 	input = strings.TrimSpace(input)
 
 	if isLikelyURL(input) {
-		return u.handleURL.Handle(ctx, input)
+		return u.handleURL.Handle(ctx, actorUserID, chatID, input)
 	}
 
-	msg, err := u.handleStrain.Handle(ctx, input)
+	msg, err := u.handleStrain.Handle(ctx, actorUserID, chatID, input)
 	if err != nil {
 		return "", err
 	}
 	if strings.EqualFold(strings.TrimSpace(msg), "No matching strain found.") {
-		return u.handleUnknown.Handle(ctx, input)
+		return u.handleUnknown.Handle(ctx, actorUserID, chatID, input)
 	}
 	return msg, nil
 }

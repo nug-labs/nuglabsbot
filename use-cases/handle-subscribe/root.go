@@ -1,3 +1,7 @@
+/*
+handlesubscribe toggles subscriptions per chat id and emits subscription-enabled / subscription-disabled analytics.
+Invoked from CommandController on /subscribe.
+*/
 package handlesubscribe
 
 import (

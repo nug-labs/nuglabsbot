@@ -4,6 +4,7 @@ package handlemessage
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -30,7 +31,7 @@ func NewHandleStrainUseCase(nuglabsClient any, analytics *utils.Analytics, db ut
 	return &HandleStrainUseCase{nuglabsClient: nuglabsClient, analytics: analytics, db: db, logger: logger}
 }
 
-func (u *HandleStrainUseCase) Handle(ctx context.Context, input string) (string, error) {
+func (u *HandleStrainUseCase) Handle(ctx context.Context, actorUserID, chatID int64, input string) (string, error) {
 	client, ok := u.nuglabsClient.(strainClient)
 	if !ok {
 		return "Strain search is unavailable right now.", nil
@@ -43,7 +44,10 @@ func (u *HandleStrainUseCase) Handle(ctx context.Context, input string) (string,
 
 	strain, err := client.GetStrain(ctx, query)
 	if err != nil {
-		return "", err
+		if u.logger != nil {
+			u.logger.Error("strain get failed for %q: %v", query, err)
+		}
+		return "Strain search is temporarily unavailable.", nil
 	}
 	if strain != nil {
 		msg := formatStrain(strain)
@@ -60,18 +64,22 @@ func (u *HandleStrainUseCase) Handle(ctx context.Context, input string) (string,
 
 	hits, err := client.SearchStrains(ctx, query)
 	if err != nil {
-		return "", err
+		if u.logger != nil {
+			u.logger.Error("strain search failed for %q: %v", query, err)
+		}
+		return "Strain search is temporarily unavailable.", nil
 	}
 	if len(hits) == 0 {
 		_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
 			Name:   "strain-not-found",
+			UserID: actorUserID,
 			Status: "miss",
-			Meta:   map[string]any{"query": query},
+			Meta:   utils.MetaWithChatID(chatID, map[string]any{"query": query}),
 		})
 		return "No matching strain found.", nil
 	}
 
-	if len(hits) > 2 {
+	if len(hits) > 1 {
 		hits = hits[:2]
 	}
 	return formatTopMatchesHTML(hits), nil
@@ -190,23 +198,18 @@ func formatAveragingHTML(strain map[string]any) string {
 func formatTHCPercent(v any) string {
 	switch t := v.(type) {
 	case float64:
-		s := strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.2f", t), "0"), ".")
-		if s == "" {
-			s = "0"
-		}
-		return s + "%"
+		return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.2f", t), "0"), ".") + "%"
 	case float32:
 		return formatTHCPercent(float64(t))
-	case int:
-		return fmt.Sprintf("%d%%", t)
-	case int64:
-		return fmt.Sprintf("%d%%", t)
-	case json.Number:
-		f, err := t.Float64()
-		if err != nil {
-			return strings.TrimSpace(t.String()) + "%"
+	case int, int64, json.Number:
+		s := strings.TrimSpace(fmt.Sprintf("%v", t))
+		if s == "" {
+			return ""
 		}
-		return formatTHCPercent(f)
+		if strings.HasSuffix(s, "%") {
+			return s
+		}
+		return s + "%"
 	default:
 		s := strings.TrimSpace(fmt.Sprintf("%v", t))
 		if s == "" {
@@ -220,10 +223,14 @@ func formatTHCPercent(v any) string {
 }
 
 func pickDescription(strain map[string]any) string {
-	for _, key := range []string{"description_sm", "description_md", "description_lg"} {
-		if s := strings.TrimSpace(anyToString(strain[key])); s != "" {
-			return s
-		}
+	if s := strings.TrimSpace(anyToString(strain["description_sm"])); s != "" {
+		return s
+	}
+	if s := strings.TrimSpace(anyToString(strain["description_md"])); s != "" {
+		return s
+	}
+	if s := strings.TrimSpace(anyToString(strain["description_lg"])); s != "" {
+		return s
 	}
 	return ""
 }
@@ -286,7 +293,7 @@ func joinListPlainMax(v any, max int) string {
 	return strings.Join(parts, ", ")
 }
 
-// StrainDeeplink builds the bot deep link for opening this strain via /start.
+// StrainDeeplink builds https://t.me/<bot>?start=<payload>; TELEGRAM_BOT_USERNAME must match BotFather @name (no @ prefix in env).
 func StrainDeeplink(strainName string) string {
 	username := strings.TrimSpace(os.Getenv("TELEGRAM_BOT_USERNAME"))
 	if username == "" {
@@ -332,18 +339,15 @@ func (u *HandleStrainUseCase) enqueueSubscriptionBroadcasts(ctx context.Context,
 		}
 		idx++
 
-		broadcastID := fmt.Sprintf("strain-%d-%d-%d", now.UnixNano(), telegramID, idx)
 		payloadRaw, err := json.Marshal(map[string]any{"text": message})
 		if err != nil {
 			return err
 		}
-		if _, err := u.db.ExecContext(
-			ctx,
-			`INSERT INTO broadcasts (id, type, payload, created_at) VALUES ($1, 'message', $2::jsonb, $3)`,
-			broadcastID, string(payloadRaw), now,
-		); err != nil {
+		payload := string(payloadRaw)
+		broadcastID, err := u.ensureBroadcastForPayload(ctx, now, payload, idx, telegramID)
+		if err != nil {
 			if u.logger != nil {
-				u.logger.Warn("skip broadcast row for chat %d: insert broadcasts failed: %v", telegramID, err)
+				u.logger.Warn("skip broadcast row for chat %d: ensure broadcast failed: %v", telegramID, err)
 			}
 			continue
 		}
@@ -367,4 +371,28 @@ func (u *HandleStrainUseCase) enqueueSubscriptionBroadcasts(ctx context.Context,
 		u.logger.Info("queued strain broadcast for %d enabled subscriptions", queued)
 	}
 	return nil
+}
+
+func (u *HandleStrainUseCase) ensureBroadcastForPayload(ctx context.Context, now time.Time, payload string, idx int64, telegramID int64) (string, error) {
+	var existingID string
+	err := u.db.QueryRowContext(
+		ctx,
+		`SELECT id FROM broadcasts WHERE type = 'message' AND payload = $1::jsonb ORDER BY created_at ASC LIMIT 1`,
+		payload,
+	).Scan(&existingID)
+	if err == nil && existingID != "" {
+		return existingID, nil
+	}
+	if err != nil && err != sql.ErrNoRows {
+		return "", err
+	}
+	broadcastID := fmt.Sprintf("strain-%d-%d-%d", now.UnixNano(), telegramID, idx)
+	if _, err := u.db.ExecContext(
+		ctx,
+		`INSERT INTO broadcasts (id, type, payload, created_at) VALUES ($1, 'message', $2::jsonb, $3)`,
+		broadcastID, payload, now,
+	); err != nil {
+		return "", err
+	}
+	return broadcastID, nil
 }

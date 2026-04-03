@@ -32,26 +32,30 @@ type HandleURLUseCase struct {
 	db            utils.DB
 	analytics     *utils.Analytics
 	nuglabsClient urlStrainClient
+	logger        *utils.Logger
 }
 
 func NewHandleURLUseCase(
 	db utils.DB,
 	analytics *utils.Analytics,
 	nuglabsClient urlStrainClient,
+	logger *utils.Logger,
 ) *HandleURLUseCase {
 	return &HandleURLUseCase{
 		db:            db,
 		analytics:     analytics,
 		nuglabsClient: nuglabsClient,
+		logger:        logger,
 	}
 }
 
-func (u *HandleURLUseCase) Handle(ctx context.Context, input string) (string, error) {
-	rawURL := strings.TrimSpace(input)
-	parsed, err := url.Parse(rawURL)
+func (u *HandleURLUseCase) Handle(ctx context.Context, actorUserID, chatID int64, input string) (string, error) {
+	// Message root already routes here only for likely URLs; parse is defense in depth.
+	parsed, err := url.Parse(strings.TrimSpace(input))
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return "Please send a valid URL.", nil
 	}
+	rawURL := parsed.String()
 
 	allowed, err := u.isWhitelisted(ctx, rawURL, parsed.Host)
 	if err != nil {
@@ -65,12 +69,12 @@ func (u *HandleURLUseCase) Handle(ctx context.Context, input string) (string, er
 	if err != nil {
 		return "", err
 	}
-	body = extractArticleContentText(body)
+	body = extractBodyText(body)
 	if strings.TrimSpace(body) == "" {
-		return "Unable to extract article content from URL.", nil
+		return "Unable to extract readable body content from URL.", nil
 	}
 
-	candidates, err := u.extractWithGemini(ctx, body)
+	candidates, err := u.extractWithGemini(ctx, actorUserID, chatID, body)
 	if err != nil {
 		return "", err
 	}
@@ -87,17 +91,30 @@ func (u *HandleURLUseCase) Handle(ctx context.Context, input string) (string, er
 		}
 		if strain != nil {
 			foundStrains = append(foundStrains, strain)
-			_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{Name: "strain-found", Status: "ok", Meta: map[string]any{"name": name}})
+			_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
+				Name:   "strain-found",
+				UserID: actorUserID,
+				Status: "ok",
+				Meta:   utils.MetaWithChatID(chatID, map[string]any{"name": name}),
+			})
 		} else {
 			notFound = append(notFound, name)
-			_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{Name: "strain-not-found", Status: "miss", Meta: map[string]any{"name": name}})
+			_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
+				Name:   "strain-not-found",
+				UserID: actorUserID,
+				Status: "miss",
+				Meta:   utils.MetaWithChatID(chatID, map[string]any{"name": name}),
+			})
 		}
 	}
 
 	_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
 		Name:   "url-processed",
+		UserID: actorUserID,
 		Status: "ok",
-		Meta:   map[string]any{"url": rawURL, "candidates": len(candidates), "found": len(foundStrains)},
+		Meta: utils.MetaWithChatID(chatID, map[string]any{
+			"url": rawURL, "candidates": len(candidates), "found": len(foundStrains),
+		}),
 	})
 
 	var b strings.Builder
@@ -122,7 +139,7 @@ func (u *HandleURLUseCase) Handle(ctx context.Context, input string) (string, er
 	return msg, nil
 }
 
-func (u *HandleURLUseCase) extractWithGemini(ctx context.Context, body string) ([]string, error) {
+func (u *HandleURLUseCase) extractWithGemini(ctx context.Context, actorUserID, chatID int64, body string) ([]string, error) {
 	key := strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
 	if key == "" {
 		return nil, fmt.Errorf("GEMINI_API_KEY is required")
@@ -135,7 +152,19 @@ func (u *HandleURLUseCase) extractWithGemini(ctx context.Context, body string) (
 	}
 
 	const maxBodyChars = 12000
+	_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
+		Name:   "url-body-length",
+		UserID: actorUserID,
+		Status: "ok",
+		Meta:   utils.MetaWithChatID(chatID, map[string]any{"length": len(body)}),
+	})
 	if len(body) > maxBodyChars {
+		_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
+			Name:   "url-body-length-exceeded",
+			UserID: actorUserID,
+			Status: "truncated",
+			Meta:   utils.MetaWithChatID(chatID, map[string]any{"length": len(body), "max": maxBodyChars}),
+		})
 		body = body[:maxBodyChars]
 	}
 
@@ -151,7 +180,9 @@ func (u *HandleURLUseCase) extractWithGemini(ctx context.Context, body string) (
 		},
 	}
 	payload, _ := json.Marshal(reqBody)
-	logGeminiInput(string(systemPromptRaw), body, string(payload))
+	if u.logger != nil {
+		u.logger.Info("[gemini] body excerpt (%d chars): %s", len(body), inlineTruncate(body, 1200))
+	}
 
 	endpoint := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + url.QueryEscape(key)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(string(payload)))
@@ -171,12 +202,16 @@ func (u *HandleURLUseCase) extractWithGemini(ctx context.Context, body string) (
 		return nil, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		fmt.Printf("[gemini] non-200 raw response: %s\n", string(rawResp))
+		if u.logger != nil {
+			u.logger.Warn("[gemini] non-200 raw response: %s", inlineTruncate(string(rawResp), 1000))
+		}
 		return nil, fmt.Errorf("gemini failed: status %d", resp.StatusCode)
 	}
 
 	text := extractGeminiText(rawResp)
-	logGeminiOutput(string(rawResp), text)
+	if u.logger != nil {
+		u.logger.Info("[gemini] extracted text: %s", inlineTruncate(text, 600))
+	}
 	if text == "" {
 		return []string{}, nil
 	}
@@ -301,16 +336,14 @@ func fetchBody(ctx context.Context, rawURL string) (string, error) {
 	return string(raw), nil
 }
 
-func extractArticleContentText(pageHTML string) string {
-	// Narrow extraction to the exact container to reduce hallucination from site template noise.
-	reContainer := regexp.MustCompile(`(?is)<div[^>]*id=["']articleContent["'][^>]*>(.*?)</div>`)
-	m := reContainer.FindStringSubmatch(pageHTML)
+func extractBodyText(pageHTML string) string {
+	reBody := regexp.MustCompile(`(?is)<body[^>]*>(.*?)</body>`)
+	m := reBody.FindStringSubmatch(pageHTML)
 	if len(m) < 2 {
 		return ""
 	}
 	block := m[1]
 
-	// Convert line breaks-ish tags to newlines before stripping other tags.
 	reBreaks := regexp.MustCompile(`(?is)<\s*(br|/p|/div|/li)\s*/?\s*>`)
 	block = reBreaks.ReplaceAllString(block, "\n")
 
@@ -339,20 +372,9 @@ func formatURLFoundStrainsHTML(found []map[string]any) string {
 	return strings.Join(blocks, "\n\n")
 }
 
-func logGeminiInput(systemPrompt string, body string, payload string) {
-	fmt.Printf("[gemini] system prompt:\n%s\n", systemPrompt)
-	fmt.Printf("[gemini] body excerpt (%d chars):\n%s\n", len(body), truncateForLog(body, 2000))
-	fmt.Printf("[gemini] request payload:\n%s\n", truncateForLog(payload, 4000))
-}
-
-func logGeminiOutput(raw string, extractedText string) {
-	fmt.Printf("[gemini] raw response:\n%s\n", truncateForLog(raw, 6000))
-	fmt.Printf("[gemini] extracted text:\n%s\n", truncateForLog(extractedText, 2000))
-}
-
-func truncateForLog(s string, max int) string {
+func inlineTruncate(s string, max int) string {
 	if len(s) <= max {
 		return s
 	}
-	return s[:max] + "\n...<truncated>..."
+	return s[:max] + "...<truncated>"
 }

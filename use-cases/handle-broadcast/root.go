@@ -109,7 +109,15 @@ func (u *RootUseCase) RunOnce() error {
 			return err
 		}
 
-		_ = u.analytics.TrackBroadcast(ctx, broadcastID, userID, kind, "sent")
+		_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
+			Name:     "broadcast",
+			UserID:   userID,
+			EntityID: broadcastID,
+			Status:   "sent",
+			Meta: map[string]any{
+				"type": kind,
+			},
+		})
 	}
 	if err := rows.Err(); err != nil {
 		return err

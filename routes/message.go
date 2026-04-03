@@ -1,4 +1,6 @@
-// Telegram message route calls message.go controller
+/*
+MessageRoute runs user middleware then MessageController (strain/url/unknown root).
+*/
 
 package routes
 
@@ -7,20 +9,25 @@ import (
 
 	"telegram-v2/controllers"
 	"telegram-v2/middleware"
+	"telegram-v2/utils"
 )
 
 type MessageRoute struct {
 	middleware *middleware.HandleUserMiddleware
 	controller *controllers.MessageController
+	log        *utils.Logger
 }
 
-func NewMessageRoute(middleware *middleware.HandleUserMiddleware, controller *controllers.MessageController) *MessageRoute {
-	return &MessageRoute{middleware: middleware, controller: controller}
+func NewMessageRoute(middleware *middleware.HandleUserMiddleware, controller *controllers.MessageController, log *utils.Logger) *MessageRoute {
+	return &MessageRoute{middleware: middleware, controller: controller, log: log}
 }
 
-func (r *MessageRoute) Handle(ctx context.Context, user middleware.TelegramUser, message string) (string, error) {
+func (r *MessageRoute) Handle(ctx context.Context, user middleware.TelegramUser, chatID int64, message string) (string, error) {
 	if err := r.middleware.EnsureUser(ctx, user); err != nil {
+		if r.log != nil {
+			r.log.Warn("message route: ensure user failed: %v", err)
+		}
 		return "", err
 	}
-	return r.controller.Handle(ctx, message)
+	return r.controller.Handle(ctx, user.TelegramID, chatID, message)
 }

@@ -1,3 +1,9 @@
+/*
+Package utils analytics persists events to app_analytics.
+Injected from composition root into use-cases; emit TrackEvent at decision points.
+TrackBroadcast was removed — callers use TrackEvent with name "broadcast" and meta.type.
+See analytics.md in the telegram-v2 module root for the full event catalog.
+*/
 package utils
 
 import (
@@ -21,20 +27,33 @@ type Analytics struct {
 	log *Logger
 }
 
+type AnalyticsFactory struct{}
+
+var AnalyticsManager = NewAnalyticsFactory()
+
+func NewAnalyticsFactory() *AnalyticsFactory {
+	return &AnalyticsFactory{}
+}
+
+func (f *AnalyticsFactory) Init(db *Database, log *Logger) *Analytics {
+	return NewAnalytics(db, log)
+}
+
 func NewAnalytics(db *Database, log *Logger) *Analytics {
 	return &Analytics{db: db, log: log}
 }
 
-func (a *Analytics) TrackBroadcast(ctx context.Context, broadcastID string, userID int64, kind string, status string) error {
-	return a.TrackEvent(ctx, AnalyticsEvent{
-		Name:     "broadcast",
-		UserID:   userID,
-		EntityID: broadcastID,
-		Status:   status,
-		Meta: map[string]any{
-			"type": kind,
-		},
-	})
+// MetaWithChatID builds meta with chat_id set last (Telegram chat where the update occurred). AnalyticsEvent.UserID should be the actor (From.ID).
+func MetaWithChatID(chatID int64, fields map[string]any) map[string]any {
+	if len(fields) == 0 {
+		return map[string]any{"chat_id": chatID}
+	}
+	out := make(map[string]any, len(fields)+1)
+	for k, v := range fields {
+		out[k] = v
+	}
+	out["chat_id"] = chatID
+	return out
 }
 
 func (a *Analytics) TrackEvent(ctx context.Context, e AnalyticsEvent) error {

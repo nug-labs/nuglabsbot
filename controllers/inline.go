@@ -1,12 +1,13 @@
-// call handle-inline/handle-inline use case
-// if event is inline query tap call handle-message/handle-strain use case
+/*
+InlineController forwards inline queries to handle-inline (search) and tap to handle-strain.
+*/
 
 package controllers
 
 import "context"
 
 type InlineHandler interface {
-	Handle(ctx context.Context, query string) ([]map[string]any, error)
+	Handle(ctx context.Context, userID, chatID int64, query string) ([]map[string]any, error)
 }
 
 type InlineController struct {
@@ -21,10 +22,10 @@ func NewInlineController(inlineHandler InlineHandler, strainHandler StrainHandle
 	}
 }
 
-func (c *InlineController) HandleQuery(ctx context.Context, query string) ([]map[string]any, error) {
-	return c.inlineHandler.Handle(ctx, query)
+func (c *InlineController) HandleQuery(ctx context.Context, userID, chatID int64, query string) ([]map[string]any, error) {
+	return c.inlineHandler.Handle(ctx, userID, chatID, query)
 }
 
-func (c *InlineController) HandleTap(ctx context.Context, selected string) (string, error) {
-	return c.strainHandler.Handle(ctx, selected)
+func (c *InlineController) HandleTap(ctx context.Context, actorUserID, chatID int64, selected string) (string, error) {
+	return c.strainHandler.Handle(ctx, actorUserID, chatID, selected)
 }

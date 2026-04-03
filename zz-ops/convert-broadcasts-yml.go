@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bufio"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,10 +9,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/lib/pq"
 	"telegram-v2/utils"
-
-	"gopkg.in/yaml.v3"
 )
 
 type frontMatter struct {
@@ -26,7 +21,7 @@ type frontMatter struct {
 }
 
 func main() {
-	loadLocalEnv()
+	utils.Env.InitOps()
 
 	broadcastDir := filepath.Join(".", "assets", "broadcasts")
 	entries, err := os.ReadDir(broadcastDir)
@@ -34,7 +29,7 @@ func main() {
 		panic(fmt.Errorf("read broadcasts dir: %w", err))
 	}
 
-	db, err := openDatabase()
+	db, err := utils.DatabaseManager.Init(context.Background())
 	if err != nil {
 		panic(fmt.Errorf("open db: %w", err))
 	}
@@ -54,7 +49,7 @@ func main() {
 		}
 
 		path := filepath.Join(broadcastDir, name)
-		if err := upsertBroadcastAndSeedOutgoing(ctx, db.SQL(), path); err != nil {
+		if err := upsertBroadcastAndSeedOutgoing(ctx, db, path); err != nil {
 			panic(err)
 		}
 		loaded++
@@ -63,48 +58,11 @@ func main() {
 	fmt.Printf("loaded %d broadcasts\n", loaded)
 }
 
-func openDatabase() (*utils.Database, error) {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		return nil, fmt.Errorf("DATABASE_URL is required")
-	}
-
-	raw, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := raw.PingContext(ctx); err != nil {
-		_ = raw.Close()
-		return nil, err
-	}
-
-	return utils.NewDatabase(raw), nil
-}
-
-func upsertBroadcastAndSeedOutgoing(ctx context.Context, db *sql.DB, path string) error {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("read broadcast file %s: %w", path, err)
-	}
-
-	parts := strings.Split(string(raw), "---")
-	if len(parts) < 3 {
-		return fmt.Errorf("invalid frontmatter format in %s", path)
-	}
-
+func upsertBroadcastAndSeedOutgoing(ctx context.Context, db *utils.Database, path string) error {
 	var meta frontMatter
-	if err := yaml.Unmarshal([]byte(parts[1]), &meta); err != nil {
-		return fmt.Errorf("parse frontmatter %s: %w", path, err)
-	}
-
-	bodyYAML := strings.TrimSpace(strings.Join(parts[2:], "---"))
 	var payload map[string]any
-	if err := yaml.Unmarshal([]byte(bodyYAML), &payload); err != nil {
-		return fmt.Errorf("parse body payload %s: %w", path, err)
+	if err := utils.ParseFrontMatterYAML(path, &meta, &payload); err != nil {
+		return err
 	}
 
 	payloadJSON, err := json.Marshal(payload)
@@ -126,7 +84,7 @@ func upsertBroadcastAndSeedOutgoing(ctx context.Context, db *sql.DB, path string
 		scheduledAt = t
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := db.SQL().BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx for %q: %w", meta.ID, err)
 	}
@@ -173,47 +131,4 @@ func upsertBroadcastAndSeedOutgoing(ctx context.Context, db *sql.DB, path string
 	}
 
 	return nil
-}
-
-func loadLocalEnv() {
-	if os.Getenv("DATABASE_URL") != "" {
-		return
-	}
-
-	envPath := ".env"
-	if strings.EqualFold(os.Getenv("APP_ENV"), "test") {
-		envPath = ".env.test"
-	}
-
-	_ = loadEnvFile(envPath)
-	if os.Getenv("DATABASE_URL") == "" && envPath != ".env" {
-		_ = loadEnvFile(".env")
-	}
-}
-
-func loadEnvFile(path string) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		key := strings.TrimSpace(parts[0])
-		val := strings.Trim(strings.TrimSpace(parts[1]), `"'`)
-		if key != "" && os.Getenv(key) == "" {
-			_ = os.Setenv(key, val)
-		}
-	}
-
-	return scanner.Err()
 }

@@ -10,7 +10,7 @@ package controllers
 import "context"
 
 type MessageHandler interface {
-	Handle(ctx context.Context, input string) (string, error)
+	Handle(ctx context.Context, actorUserID, chatID int64, input string) (string, error)
 }
 
 type MessageController struct {
@@ -21,6 +21,6 @@ func NewMessageController(handler MessageHandler) *MessageController {
 	return &MessageController{handler: handler}
 }
 
-func (c *MessageController) Handle(ctx context.Context, input string) (string, error) {
-	return c.handler.Handle(ctx, input)
+func (c *MessageController) Handle(ctx context.Context, actorUserID, chatID int64, input string) (string, error) {
+	return c.handler.Handle(ctx, actorUserID, chatID, input)
 }
