@@ -18,7 +18,6 @@ import (
 	handlebroadcast "telegram-v2/use-cases/handle-broadcast"
 	handlecommand "telegram-v2/use-cases/handle-command"
 	handleevents "telegram-v2/use-cases/handle-events"
-	handlegroupchat "telegram-v2/use-cases/handle-groupchat"
 	handleinline "telegram-v2/use-cases/handle-inline"
 	handlemessage "telegram-v2/use-cases/handle-message"
 	handlesubscribe "telegram-v2/use-cases/handle-subscribe"
@@ -88,7 +87,6 @@ func main() {
 	handleSubscribeUC := handlesubscribe.NewRootUseCase(database, analytics)
 	handleInlineUC := handleinline.NewHandleInlineUseCase(nugClient, analytics)
 	handleBroadcastUC := handlebroadcast.NewRootUseCase(database, analytics, broadcastSender, broadcastSender)
-	handleGroupchatUC := handlegroupchat.NewRootUseCase(database, analytics, logger, bot)
 
 	userMiddleware := middleware.NewHandleUserMiddleware(database, analytics, deferredWrites)
 	messageController := controllers.NewMessageController(handleMessageRootUC)
@@ -100,16 +98,14 @@ func main() {
 	inlineRoute := routes.NewInlineRoute(userMiddleware, inlineController, logger)
 	updateRouter := routes.NewUpdateRouter(bot, logger, messageRoute, commandRoute, inlineRoute)
 	broadcastService := bgservices.NewHandleBroadcastService(handleBroadcastUC, logger)
-	groupchatService := bgservices.NewHandleGroupchatService(handleGroupchatUC, logger)
 
 	go updateRouter.Run(ctx)
 
 	if utils.Env.IsLive() {
 		go broadcastService.RunEvery(ctx, pollBroadcastInterval())
-		go groupchatService.RunEvery(ctx, pollGroupchatInterval())
-		logger.Info("background services started (broadcast, groupchat)")
+		logger.Info("background services started (broadcast)")
 	} else {
-		logger.Info("background services skipped (APP_ENV is not live; set APP_ENV=live to enable broadcast + groupchat schedulers)")
+		logger.Info("background services skipped (APP_ENV is not live; set APP_ENV=live to enable broadcast scheduler)")
 	}
 
 	logger.Info("telegram-v2 composition root initialized")
@@ -131,10 +127,24 @@ func (t *telegramBroadcaster) SendMessage(chatID int64, text string) (int64, err
 
 func telegramHTMLMessage(chatID int64, text string) tgbotapi.MessageConfig {
 	m := tgbotapi.NewMessage(chatID, text)
-	if strings.Contains(text, "<b>") || strings.Contains(text, "<a ") {
+	if looksLikeTelegramHTML(text) {
 		m.ParseMode = "HTML"
 	}
 	return m
+}
+
+// looksLikeTelegramHTML enables HTML parse mode for broadcast-style bodies (see assets/broadcasts).
+func looksLikeTelegramHTML(text string) bool {
+	if !strings.Contains(text, "<") || !strings.Contains(text, ">") {
+		return false
+	}
+	// https://core.telegram.org/bots/api#html-style
+	return strings.Contains(text, "<b>") || strings.Contains(text, "<strong>") ||
+		strings.Contains(text, "<i>") || strings.Contains(text, "<em>") ||
+		strings.Contains(text, "<u>") || strings.Contains(text, "<s>") || strings.Contains(text, "<strike>") ||
+		strings.Contains(text, "<code>") || strings.Contains(text, "<pre>") ||
+		strings.Contains(text, "<a ") || strings.Contains(text, "<tg-spoiler>") ||
+		strings.Contains(text, "<blockquote>") || strings.Contains(text, "<br")
 }
 
 func (t *telegramBroadcaster) SendQuiz(userID int64, question string, options []string, correctIndex int) (int64, error) {
@@ -156,17 +166,4 @@ func pollBroadcastInterval() time.Duration {
 		return time.Minute
 	}
 	return time.Duration(secs) * time.Second
-}
-
-// pollGroupchatInterval matches GROUPCHAT_FREQUENCY_MINUTES (same env as handlegroupchat cooldown semantics for tick rate).
-func pollGroupchatInterval() time.Duration {
-	raw := strings.TrimSpace(os.Getenv("GROUPCHAT_FREQUENCY_MINUTES"))
-	if raw == "" {
-		return 60 * time.Minute
-	}
-	mins, err := strconv.Atoi(raw)
-	if err != nil || mins <= 0 {
-		return 60 * time.Minute
-	}
-	return time.Duration(mins) * time.Minute
 }

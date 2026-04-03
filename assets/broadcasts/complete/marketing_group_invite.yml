@@ -1,0 +1,15 @@
+---
+id: marketing_group_invite
+type: message
+audience: all
+order: 1
+---
+
+text: |
+  <b>Quick update from Nug Labs</b>
+
+  Join our communities (tap a link):
+  <a href="https://t.me/+REPLACE_WITH_INVITE_1">Community 1</a>
+  <a href="https://t.me/+REPLACE_WITH_INVITE_2">Community 2</a>
+
+  <i>Already in? You can ignore this message.</i>
