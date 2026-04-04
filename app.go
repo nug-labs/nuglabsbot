@@ -86,7 +86,7 @@ func main() {
 	handlePolicyUC := handlecommand.NewRootUseCase(handlecommand.NewHandlePolicyUseCase(), analytics)
 	handleSubscribeUC := handlesubscribe.NewRootUseCase(database, analytics)
 	handleInlineUC := handleinline.NewHandleInlineUseCase(nugClient, analytics)
-	handleBroadcastUC := handlebroadcast.NewRootUseCase(database, analytics, broadcastSender, broadcastSender)
+	handleBroadcastUC := handlebroadcast.NewRootUseCase(database, analytics, broadcastSender, broadcastSender, logger)
 
 	userMiddleware := middleware.NewHandleUserMiddleware(database, analytics, deferredWrites)
 	messageController := controllers.NewMessageController(handleMessageRootUC)
@@ -101,13 +101,12 @@ func main() {
 
 	go updateRouter.Run(ctx)
 
-	if utils.Env.IsLive() {
+	if utils.Env.BroadcastSchedulerEnabled() {
 		go broadcastService.RunEvery(ctx, pollBroadcastInterval())
 		logger.Info("background services started (broadcast)")
 	} else {
-		logger.Info("background services skipped (APP_ENV is not live; set APP_ENV=live to enable broadcast scheduler)")
+		logger.Info("background services skipped (set APP_ENV=live or APP_ENV=test to enable broadcast scheduler)")
 	}
-
 	logger.Info("telegram-v2 composition root initialized")
 	<-ctx.Done()
 	logger.Info("telegram-v2 shutting down")

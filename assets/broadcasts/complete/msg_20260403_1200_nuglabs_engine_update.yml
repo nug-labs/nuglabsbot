@@ -1,0 +1,22 @@
+---
+id: msg_20260403_1200_nuglabs_engine_update
+type: message
+audience: all
+order: 1
+---
+
+text: |
+  <b>What’s new under the hood at Nug Labs</b>
+
+  We’ve been running the bot on a <b>new engine</b> (<code>telegram-v2</code>): same strain search and deep links you rely on, with a clearer architecture and room to grow.
+
+  <b>Compared to the previous stack</b>
+  • <b>Runtime:</b> the live service is now <b>Go</b> end-to-end (long polling, structured routes and use-cases) instead of the older <b>Node + Telegraf</b> app.
+  • <b>Data:</b> users, broadcasts, and analytics are wired through <b>Postgres</b> (with safer pooling for hosted DBs) instead of only in-process patterns.
+  • <b>Strain data:</b> still powered by the <b>NugLabs</b> catalogue and SDK—with sync on startup so lookups stay fresh.
+  • <b>Features in v2:</b> strain &amp; URL flows, inline search, commands (<code>/help</code>, <code>/about</code>, policy &amp; legal), subscriptions, <b>broadcasts</b> (HTML messages &amp; quizzes), and background jobs for analytics and sending updates.
+
+  <b>For you</b>
+  Nothing changes in how you chat with the bot—send a strain name, use <code>/start</code> links, or search inline. We’re just shipping faster, more reliable updates from here.
+
+  <i>— Nug Labs</i>

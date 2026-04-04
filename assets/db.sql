@@ -31,6 +31,15 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Supergroups/channels (negative telegram chat ids) seen by the bot; used by zz-ops/convert-broadcasts-yml to seed broadcast_outgoing.
+CREATE TABLE IF NOT EXISTS group_chats (
+  telegram_id BIGINT PRIMARY KEY,
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_group_chats_last_seen ON group_chats(last_seen_at);
+
 CREATE TABLE IF NOT EXISTS broadcasts (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL CHECK (type IN ('message', 'quiz')),

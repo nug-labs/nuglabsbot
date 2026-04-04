@@ -27,6 +27,14 @@ func (e *EnvManager) IsLive() bool {
 	return strings.EqualFold(strings.TrimSpace(os.Getenv("APP_ENV")), "live")
 }
 
+// BroadcastSchedulerEnabled is true for APP_ENV live or test (case-insensitive).
+// Test uses a separate database and can run the same outbound broadcast worker (e.g. GC smoke tests).
+// Other APP_ENV values skip the scheduler.
+func (e *EnvManager) BroadcastSchedulerEnabled() bool {
+	s := strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV")))
+	return s == "live" || s == "test"
+}
+
 // Init loads .env files from the current working directory (godotenv does not override vars already set by the shell/Docker).
 //   - APP_ENV unset or "test" → prefer .env.test, then .env if DATABASE_URL still empty
 //   - any other APP_ENV (e.g. live, production) → .env

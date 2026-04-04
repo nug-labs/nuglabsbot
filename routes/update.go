@@ -90,9 +90,21 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 			_, err = r.bot.Send(newHTMLMessageIfNeeded(update.Message.Chat.ID, reply))
 			return err
 		}
-		reply, err := r.messageRoute.Handle(ctx, user, update.Message.Chat.ID, update.Message.Text)
+		// Joins, member updates, pins, and many "settings" events send a Message with no Text/Caption.
+		// Without this, empty input hits strain → "Please provide a strain name." in groups.
+		body := strings.TrimSpace(update.Message.Text)
+		if body == "" {
+			body = strings.TrimSpace(update.Message.Caption)
+		}
+		if body == "" {
+			return nil
+		}
+		reply, err := r.messageRoute.Handle(ctx, user, update.Message.Chat.ID, body)
 		if err != nil {
 			return err
+		}
+		if strings.TrimSpace(reply) == "" {
+			return nil
 		}
 		_, err = r.bot.Send(newHTMLMessageIfNeeded(update.Message.Chat.ID, reply))
 		return err

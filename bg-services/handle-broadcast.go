@@ -1,6 +1,6 @@
 /*
 bg-services/handle-broadcast runs the broadcast_outgoing sender on an interval.
-Started from app.go only when APP_ENV=live. zz-ops/convert-broadcasts-yml loads scheduled rows.
+Started from app.go when APP_ENV is live or test. zz-ops/convert-broadcasts-yml loads scheduled rows.
 */
 
 package bgservices

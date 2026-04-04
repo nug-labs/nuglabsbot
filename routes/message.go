@@ -23,7 +23,7 @@ func NewMessageRoute(middleware *middleware.HandleUserMiddleware, controller *co
 }
 
 func (r *MessageRoute) Handle(ctx context.Context, user middleware.TelegramUser, chatID int64, message string) (string, error) {
-	if err := r.middleware.EnsureUser(ctx, user); err != nil {
+	if err := r.middleware.EnsureUser(ctx, user, chatID); err != nil {
 		if r.log != nil {
 			r.log.Warn("message route: ensure user failed: %v", err)
 		}

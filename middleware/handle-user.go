@@ -1,5 +1,6 @@
 /*
 HandleUserMiddleware upserts users on each routed update (commands, messages, inline).
+When chat_id is a group/supergroup/channel (negative), records telegram_id in group_chats for marketing seeding.
 Optional analytics records invalid Telegram payloads (zero ID).
 */
 
@@ -31,7 +32,7 @@ func NewHandleUserMiddleware(store db.DB, analytics *utils.Analytics, deferred *
 	return &HandleUserMiddleware{store: store, analytics: analytics, deferred: deferred}
 }
 
-func (m *HandleUserMiddleware) EnsureUser(ctx context.Context, u TelegramUser) error {
+func (m *HandleUserMiddleware) EnsureUser(ctx context.Context, u TelegramUser, chatID int64) error {
 	if u.TelegramID == 0 {
 		if m.analytics != nil {
 			_ = m.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
@@ -45,13 +46,20 @@ func (m *HandleUserMiddleware) EnsureUser(ctx context.Context, u TelegramUser) e
 
 	if m.deferred != nil {
 		uCopy := u
+		chatCopy := chatID
 		if err := m.deferred.Enqueue(func(c context.Context, conn db.DB) error {
-			return upsertUser(c, conn, uCopy)
+			if err := upsertUser(c, conn, uCopy); err != nil {
+				return err
+			}
+			return upsertGroupChatIfNeeded(c, conn, chatCopy)
 		}); err == nil {
 			return nil
 		}
 	}
-	return upsertUser(ctx, m.store, u)
+	if err := upsertUser(ctx, m.store, u); err != nil {
+		return err
+	}
+	return upsertGroupChatIfNeeded(ctx, m.store, chatID)
 }
 
 func upsertUser(ctx context.Context, conn db.DB, u TelegramUser) error {
@@ -67,6 +75,22 @@ func upsertUser(ctx context.Context, conn db.DB, u TelegramUser) error {
 		   total_requests = users.total_requests + 1,
 		   last_seen_at = EXCLUDED.last_seen_at`,
 		u.TelegramID, u.Username, u.FirstName, u.LastName, time.Now().UTC(),
+	)
+	return err
+}
+
+func upsertGroupChatIfNeeded(ctx context.Context, conn db.DB, chatID int64) error {
+	if chatID >= 0 {
+		return nil
+	}
+	now := time.Now().UTC()
+	_, err := conn.ExecContext(
+		ctx,
+		`INSERT INTO group_chats (telegram_id, first_seen_at, last_seen_at)
+		 VALUES ($1, $2, $2)
+		 ON CONFLICT (telegram_id)
+		 DO UPDATE SET last_seen_at = EXCLUDED.last_seen_at`,
+		chatID, now,
 	)
 	return err
 }

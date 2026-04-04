@@ -288,11 +288,15 @@ func upsertBroadcastAndSeedOutgoing(ctx context.Context, database *db.Database, 
 			userFilter = "TRUE"
 		}
 
+		// Users (filtered by audience) UNION all known group/supergroup/channel chats from group_chats.
 		seedQuery := fmt.Sprintf(
 			`INSERT INTO broadcast_outgoing (broadcast_id, user_id, scheduled_at, sent_time)
-			 SELECT $1, u.telegram_id, $2, NULL
-			 FROM users u
-			 WHERE %s
+			 SELECT $1, t.telegram_id, $2, NULL
+			 FROM (
+			   SELECT u.telegram_id FROM users u WHERE %s
+			   UNION
+			   SELECT g.telegram_id FROM group_chats g
+			 ) AS t
 			 ON CONFLICT (broadcast_id, user_id) DO NOTHING`,
 			userFilter,
 		)

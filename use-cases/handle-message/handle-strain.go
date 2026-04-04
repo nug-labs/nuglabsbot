@@ -4,12 +4,14 @@ package handlemessage
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"telegram-v2/utils"
 	"telegram-v2/utils/db"
@@ -40,7 +42,10 @@ func (u *HandleStrainUseCase) Handle(ctx context.Context, actorUserID, chatID in
 
 	query := strings.TrimSpace(input)
 	if query == "" {
-		return "Please provide a strain name.", nil
+		if chatID >= 0 {
+			return "Please provide a strain name.", nil
+		}
+		return "", nil
 	}
 
 	strain, err := client.GetStrain(ctx, query)
@@ -52,13 +57,14 @@ func (u *HandleStrainUseCase) Handle(ctx context.Context, actorUserID, chatID in
 	}
 	if strain != nil {
 		msg := formatStrain(strain)
-		if err := u.enqueueSubscriptionBroadcasts(ctx, msg); err != nil && u.logger != nil {
+		if err := u.queueStrainSubscriptionBroadcasts(ctx, msg, anyToString(strain["name"]), query); err != nil && u.logger != nil {
 			u.logger.Error("enqueue subscription broadcasts failed: %v", err)
 		}
 		_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
 			Name:   "strain-found",
+			UserID: actorUserID,
 			Status: "ok",
-			Meta:   map[string]any{"query": query},
+			Meta:   utils.MetaWithChatID(chatID, map[string]any{"query": query, "via": "exact"}),
 		})
 		return msg, nil
 	}
@@ -80,7 +86,48 @@ func (u *HandleStrainUseCase) Handle(ctx context.Context, actorUserID, chatID in
 		return "No matching strain found.", nil
 	}
 
+	// Single search hit: same path as exact match (full card + subscription broadcast queue).
+	if len(hits) == 1 {
+		oneName := anyToString(hits[0]["name"])
+		if oneName != "" {
+			full, err := client.GetStrain(ctx, oneName)
+			if err == nil && full != nil {
+				msg := formatStrain(full)
+				if err := u.queueStrainSubscriptionBroadcasts(ctx, msg, anyToString(full["name"]), query); err != nil && u.logger != nil {
+					u.logger.Error("enqueue subscription broadcasts failed: %v", err)
+				}
+				_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
+					Name:   "strain-found",
+					UserID: actorUserID,
+					Status: "ok",
+					Meta:   utils.MetaWithChatID(chatID, map[string]any{"query": query, "via": "search", "resolved": oneName}),
+				})
+				return msg, nil
+			}
+		}
+	}
+
 	if len(hits) > 1 {
+		orig := len(hits)
+		// Fan-out uses the same top match as the card list: subscribers get the resolved first hit.
+		firstName := anyToString(hits[0]["name"])
+		if firstName != "" {
+			full, gerr := client.GetStrain(ctx, firstName)
+			if gerr == nil && full != nil {
+				msg := formatStrain(full)
+				if err := u.queueStrainSubscriptionBroadcasts(ctx, msg, anyToString(full["name"]), query); err != nil && u.logger != nil {
+					u.logger.Error("enqueue subscription broadcasts failed: %v", err)
+				}
+				_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
+					Name:   "strain-found",
+					UserID: actorUserID,
+					Status: "ok",
+					Meta: utils.MetaWithChatID(chatID, map[string]any{
+						"query": query, "via": "search-multi", "resolved": firstName, "match_count": orig,
+					}),
+				})
+			}
+		}
 		hits = hits[:2]
 	}
 	return formatTopMatchesHTML(hits), nil
@@ -280,6 +327,7 @@ func splitCommaList(s string) []string {
 
 func joinListPlain(v any) string {
 	parts := collectListParts(v)
+	sort.Strings(parts)
 	return strings.Join(parts, ", ")
 }
 
@@ -288,6 +336,7 @@ func joinListPlainMax(v any, max int) string {
 		return ""
 	}
 	parts := collectListParts(v)
+	sort.Strings(parts)
 	if len(parts) > max {
 		parts = parts[:max]
 	}
@@ -316,14 +365,45 @@ func anyToString(v any) string {
 	}
 }
 
-func (u *HandleStrainUseCase) enqueueSubscriptionBroadcasts(ctx context.Context, message string) error {
+// subscriptionMessagePayload must use a struct (not map) so json.Marshal order is stable; map iteration
+// breaks broadcasts.payload equality dedupe and causes a new broadcast row on every lookup on live workers.
+type subscriptionMessagePayload struct {
+	Text      string `json:"text"`
+	StrainKey string `json:"strain_key"`
+}
+
+func normalizeStrainKey(name string) string {
+	return strings.ToLower(strings.TrimSpace(name))
+}
+
+// fanoutStrainKey must be stable for the same strain across lookups: prefer resolved name, then user query,
+// then content hash (last resort only — HTML can drift).
+func fanoutStrainKey(strainName, searchQuery, message string) string {
+	if k := normalizeStrainKey(strainName); k != "" {
+		return k
+	}
+	if k := normalizeStrainKey(searchQuery); k != "" {
+		return k
+	}
+	sum := sha256.Sum256([]byte(message))
+	return fmt.Sprintf("h%x", sum[:8])
+}
+
+// queueStrainSubscriptionBroadcasts is the strain-search → broadcast pipeline:
+// 1) Reuse or create a single broadcasts row per identical body (ensureBroadcastForPayload matches payload jsonb).
+// 2) Upsert broadcast_outgoing for every enabled subscription; repeat searches re-queue (sent_time cleared on conflict).
+// 3) bg-services/handle-broadcast sends rows with sent_time IS NULL.
+func (u *HandleStrainUseCase) queueStrainSubscriptionBroadcasts(ctx context.Context, message, strainName, searchQuery string) error {
 	if u.store == nil || strings.TrimSpace(message) == "" {
 		return nil
 	}
+	key := fanoutStrainKey(strainName, searchQuery, message)
 
 	rows, err := u.store.QueryContext(
 		ctx,
-		`SELECT telegram_id FROM subscriptions WHERE enabled = TRUE ORDER BY telegram_id ASC`,
+		`SELECT s.telegram_id FROM subscriptions s
+		 WHERE s.enabled = TRUE
+		 ORDER BY s.telegram_id ASC`,
 		0,
 	)
 	if err != nil {
@@ -341,7 +421,7 @@ func (u *HandleStrainUseCase) enqueueSubscriptionBroadcasts(ctx context.Context,
 		}
 		idx++
 
-		payloadRaw, err := json.Marshal(map[string]any{"text": message})
+		payloadRaw, err := json.Marshal(subscriptionMessagePayload{Text: message, StrainKey: key})
 		if err != nil {
 			return err
 		}
@@ -353,17 +433,24 @@ func (u *HandleStrainUseCase) enqueueSubscriptionBroadcasts(ctx context.Context,
 			}
 			continue
 		}
-		if _, err := u.store.ExecContext(
+		res, err := u.store.ExecContext(
 			ctx,
-			`INSERT INTO broadcast_outgoing (broadcast_id, user_id, scheduled_at) VALUES ($1, $2, $3)`,
+			`INSERT INTO broadcast_outgoing (broadcast_id, user_id, scheduled_at, sent_time)
+			 VALUES ($1, $2, $3, NULL)
+			 ON CONFLICT (broadcast_id, user_id) DO UPDATE SET
+			   scheduled_at = EXCLUDED.scheduled_at,
+			   sent_time = NULL`,
 			broadcastID, telegramID, now,
-		); err != nil {
+		)
+		if err != nil {
 			if u.logger != nil {
 				u.logger.Warn("skip outgoing row for chat %d: insert broadcast_outgoing failed: %v", telegramID, err)
 			}
 			continue
 		}
-		queued++
+		if n, raErr := res.RowsAffected(); raErr == nil && n > 0 {
+			queued++
+		}
 	}
 
 	if err := rows.Err(); err != nil {

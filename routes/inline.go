@@ -23,7 +23,7 @@ func NewInlineRoute(middleware *middleware.HandleUserMiddleware, controller *con
 }
 
 func (r *InlineRoute) HandleQuery(ctx context.Context, user middleware.TelegramUser, query string) ([]map[string]any, error) {
-	if err := r.middleware.EnsureUser(ctx, user); err != nil {
+	if err := r.middleware.EnsureUser(ctx, user, user.TelegramID); err != nil {
 		if r.log != nil {
 			r.log.Warn("inline route: ensure user failed: %v", err)
 		}
@@ -34,7 +34,7 @@ func (r *InlineRoute) HandleQuery(ctx context.Context, user middleware.TelegramU
 }
 
 func (r *InlineRoute) HandleTap(ctx context.Context, user middleware.TelegramUser, selected string) (string, error) {
-	if err := r.middleware.EnsureUser(ctx, user); err != nil {
+	if err := r.middleware.EnsureUser(ctx, user, user.TelegramID); err != nil {
 		if r.log != nil {
 			r.log.Warn("inline route tap: ensure user failed: %v", err)
 		}

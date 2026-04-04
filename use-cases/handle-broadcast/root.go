@@ -12,7 +12,13 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
+	"os"
+	"strconv"
+	"strings"
 	"time"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"telegram-v2/utils"
 	"telegram-v2/utils/db"
@@ -23,6 +29,7 @@ type RootUseCase struct {
 	analytics        *utils.Analytics
 	messageBroadcast MessageBroadcaster
 	quizBroadcaster  QuizBroadcaster
+	log              *utils.Logger
 }
 
 func NewRootUseCase(
@@ -30,18 +37,38 @@ func NewRootUseCase(
 	analytics *utils.Analytics,
 	messageBroadcaster MessageBroadcaster,
 	quizBroadcaster QuizBroadcaster,
+	log *utils.Logger,
 ) *RootUseCase {
 	return &RootUseCase{
 		store:            store,
 		analytics:        analytics,
 		messageBroadcast: messageBroadcaster,
 		quizBroadcaster:  quizBroadcaster,
+		log:              log,
 	}
 }
 
+func broadcastRunTimeout() time.Duration {
+	const defaultSec = 120
+	raw := strings.TrimSpace(os.Getenv("BROADCAST_RUN_TIMEOUT_SECONDS"))
+	if raw == "" {
+		return defaultSec * time.Second
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n <= 0 {
+		return defaultSec * time.Second
+	}
+	return time.Duration(n) * time.Second
+}
+
 func (u *RootUseCase) RunOnce() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), broadcastRunTimeout())
 	defer cancel()
+
+	// One statement replaces hundreds of per-row subscription checks (avoids context deadline exceeded).
+	if err := u.closeStrainOutgoingWithoutSubscription(ctx); err != nil {
+		return err
+	}
 
 	rows, err := u.store.QueryContext(
 		ctx,
@@ -80,6 +107,26 @@ func (u *RootUseCase) RunOnce() error {
 			if text != "" && u.messageBroadcast != nil {
 				mid, err := u.messageBroadcast.SendMessage(userID, text)
 				if err != nil {
+					if u.log != nil {
+						u.log.Error("broadcast message send failed broadcast_id=%s chat_id=%d: %v", broadcastID, userID, err)
+					}
+					if permanentTelegramDeliveryError(err) {
+						if aborterr := u.abortUndeliverableOutgoing(ctx, broadcastID, userID); aborterr != nil {
+							return aborterr
+						}
+						if u.log != nil {
+							u.log.Warn("broadcast row closed (undeliverable); will not retry broadcast_id=%s chat_id=%d", broadcastID, userID)
+						}
+						_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
+							Name:     "broadcast",
+							UserID:   userID,
+							EntityID: broadcastID,
+							Status:   "aborted",
+							Meta: map[string]any{
+								"type": kind, "broadcast_id": broadcastID, "reason": "telegram_permanent_error", "error": err.Error(),
+							},
+						})
+					}
 					continue
 				}
 				tgMsg = sql.NullInt64{Int64: mid, Valid: true}
@@ -103,6 +150,17 @@ func (u *RootUseCase) RunOnce() error {
 				if question != "" && len(options) >= 2 {
 					mid, err := u.quizBroadcaster.SendQuiz(userID, question, options, correctIndex)
 					if err != nil {
+						if u.log != nil {
+							u.log.Error("broadcast quiz send failed broadcast_id=%s chat_id=%d: %v", broadcastID, userID, err)
+						}
+						if permanentTelegramDeliveryError(err) {
+							if aborterr := u.abortUndeliverableOutgoing(ctx, broadcastID, userID); aborterr != nil {
+								return aborterr
+							}
+							if u.log != nil {
+								u.log.Warn("broadcast quiz row closed (undeliverable); will not retry broadcast_id=%s chat_id=%d", broadcastID, userID)
+							}
+						}
 						continue
 					}
 					tgMsg = sql.NullInt64{Int64: mid, Valid: true}
@@ -126,7 +184,7 @@ func (u *RootUseCase) RunOnce() error {
 			return err
 		}
 
-		meta := map[string]any{"type": kind}
+		meta := map[string]any{"type": kind, "broadcast_id": broadcastID}
 		if tgMsg.Valid {
 			meta["telegram_message_id"] = tgMsg.Int64
 		}
@@ -142,4 +200,75 @@ func (u *RootUseCase) RunOnce() error {
 		return err
 	}
 	return nil
+}
+
+// closeStrainOutgoingWithoutSubscription marks pending strain fan-out rows as done when the chat
+// is not subscribed (or disabled). Pending rows are otherwise retried every tick and can stall the run.
+func (u *RootUseCase) closeStrainOutgoingWithoutSubscription(ctx context.Context) error {
+	res, err := u.store.ExecContext(
+		ctx,
+		`UPDATE broadcast_outgoing AS bo
+		 SET sent_time = NOW(),
+		     telegram_message_id = NULL
+		 FROM broadcasts AS b
+		 WHERE bo.broadcast_id = b.id
+		   AND bo.sent_time IS NULL
+		   AND b.id ~ '^strain-'
+		   AND NOT EXISTS (
+		     SELECT 1 FROM subscriptions s
+		     WHERE s.telegram_id = bo.user_id AND s.enabled = TRUE
+		   )`,
+	)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if u.log != nil && n > 0 {
+		u.log.Info("closed %d strain broadcast_outgoing rows (subscription disabled or missing)", n)
+	}
+	return nil
+}
+
+// abortUndeliverableOutgoing sets sent_time so the scheduler stops retrying the same row forever
+// (e.g. bot blocked, group write forbidden). telegram_message_id stays NULL.
+func (u *RootUseCase) abortUndeliverableOutgoing(ctx context.Context, broadcastID string, userID int64) error {
+	_, err := u.store.ExecContext(
+		ctx,
+		`UPDATE broadcast_outgoing
+		 SET sent_time = NOW(),
+		     telegram_message_id = NULL
+		 WHERE broadcast_id = $1 AND user_id = $2 AND sent_time IS NULL`,
+		broadcastID, userID,
+	)
+	return err
+}
+
+func permanentTelegramDeliveryError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var e tgbotapi.Error
+	if errors.As(err, &e) {
+		switch e.Code {
+		case 403:
+			return true
+		case 400:
+			m := strings.ToLower(e.Message)
+			return strings.Contains(m, "chat not found") ||
+				strings.Contains(m, "peer_id_invalid") ||
+				strings.Contains(m, "not enough rights") ||
+				strings.Contains(m, "have no rights") ||
+				strings.Contains(m, "chat_write_forbidden") ||
+				strings.Contains(m, "group chat was upgraded") ||
+				strings.Contains(m, "channel_invalid") ||
+				strings.Contains(m, "user is deactivated")
+		default:
+			return false
+		}
+	}
+	low := strings.ToLower(err.Error())
+	return strings.Contains(low, "forbidden") ||
+		strings.Contains(low, "bot was blocked") ||
+		strings.Contains(low, "kicked") ||
+		strings.Contains(low, "chat_write_forbidden")
 }

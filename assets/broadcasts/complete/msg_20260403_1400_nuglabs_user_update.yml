@@ -1,0 +1,19 @@
+---
+id: msg_20260403_0000_nuglabs_user_update
+type: message
+audience: all
+order: 1
+---
+
+text: |
+  <b>A quick hello from Nug Labs</b>
+
+  We’ve been upgrading how the bot runs behind the scenes so your strain lookups stay <b>fast and dependable</b> - same habits: message a name, <code>/subscribe</code> to get updates!
+
+  <b>What we’re working on next</b>
+  • <b>Indica / sativa</b> ( and hybrid ) cues on strains - so you can see leanings at a glance.
+  • <b>More strains</b> in the catalogue as we grow the dataset.
+
+  Nothing you need to do; we’ll roll things out as they’re ready. Thanks for using the bot.
+
+  <i>— Nug Labs</i>

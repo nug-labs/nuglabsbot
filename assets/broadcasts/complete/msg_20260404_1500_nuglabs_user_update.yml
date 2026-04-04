@@ -1,0 +1,27 @@
+---
+id: msg_20260404_1500_nuglabs_user_update
+type: message
+audience: all
+order: 1
+---
+
+text: |
+  <b>A quick hello from Nug Labs</b>
+
+  We’ve been upgrading how the bot runs behind the scenes so your strain lookups stay <b>fast and dependable</b> - same habits: message a name, <code>/subscribe</code> to get updates!
+
+  <b>What we’re working on next</b>
+  • <b>Indica / sativa</b> ( and hybrid ) cues on strains - so you can see leanings at a glance.
+  • <b>More strains</b> in the catalogue as we grow the dataset.
+
+  Nothing you need to do; we’ll roll things out as they’re ready.
+
+  In the meantime, we're rolling out a new channel for you guys to see what everyone is talking about!
+
+  <a href="https://t.me/nuglabs">Join the community feed here</a>
+
+  Have a great Easter weekend!
+
+  Thanks.
+
+  <i>— Nug Labs</i>
