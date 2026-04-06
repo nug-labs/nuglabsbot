@@ -90,7 +90,8 @@ func (d *Database) QueryRowContext(ctx context.Context, query string, cacheLifet
 	}
 	_ = cols
 	if len(data) == 0 {
-		d.cache.setRowErr(key, sql.ErrNoRows, cacheLifetime)
+		// Do not cache misses (sql.ErrNoRows). Missing rows can be created moments later,
+		// and caching that miss can cause stale "not found" behavior.
 		return &materializedRow{err: sql.ErrNoRows}
 	}
 	vals := data[0]

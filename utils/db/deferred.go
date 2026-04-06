@@ -10,6 +10,7 @@ import (
 
 const deferredWriteQueueSize = 512
 const deferredWriteTimeout = 20 * time.Second
+const deferredWriteSlowThreshold = 500 * time.Millisecond
 
 // DeferredWriteQueue holds DB work off the hot path (Telegram update handler). A single worker
 // runs Enqueued functions serially so Supabase round-trips do not block replies.
@@ -44,13 +45,25 @@ func (q *DeferredWriteQueue) Run(ctx context.Context, store DB, log *utils.Logge
 	for {
 		select {
 		case <-ctx.Done():
+			if log != nil {
+				log.Info("event=deferred-write-worker status=stopped pending=%d", len(q.ch))
+			}
 			return
 		case fn := <-q.ch:
+			started := time.Now()
 			runCtx, cancel := context.WithTimeout(context.Background(), deferredWriteTimeout)
 			err := fn(runCtx, store)
 			cancel()
-			if err != nil && log != nil {
-				log.Warn("deferred write failed: %v", err)
+			if log != nil {
+				durationMs := time.Since(started).Milliseconds()
+				pending := len(q.ch)
+				if err != nil {
+					log.Warn("event=deferred-write status=error duration_ms=%d pending=%d err=%v", durationMs, pending, err)
+					continue
+				}
+				if time.Since(started) >= deferredWriteSlowThreshold {
+					log.Warn("event=deferred-write status=slow duration_ms=%d pending=%d", durationMs, pending)
+				}
 			}
 		}
 	}

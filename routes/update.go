@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"telegram-v2/middleware"
@@ -63,8 +64,16 @@ func (r *UpdateRouter) Run(ctx context.Context) {
 			if !ok {
 				return
 			}
-			if err := r.HandleUpdate(ctx, update); err != nil && r.log != nil {
-				r.log.Error("handle update: %v", err)
+			started := time.Now()
+			err := r.HandleUpdate(ctx, update)
+			if r.log != nil {
+				durationMs := time.Since(started).Milliseconds()
+				kind := updateKind(update)
+				if err != nil {
+					r.log.Error("event=update-handle kind=%s status=error duration_ms=%d err=%v", kind, durationMs, err)
+				} else {
+					r.log.Info("event=update-handle kind=%s status=ok duration_ms=%d", kind, durationMs)
+				}
 			}
 		}
 	}
@@ -166,4 +175,17 @@ func newHTMLMessageIfNeeded(chatID int64, text string) tgbotapi.MessageConfig {
 		m.ParseMode = "HTML"
 	}
 	return m
+}
+
+func updateKind(update tgbotapi.Update) string {
+	if update.Message != nil {
+		if update.Message.IsCommand() {
+			return "command"
+		}
+		return "message"
+	}
+	if update.InlineQuery != nil {
+		return "inline"
+	}
+	return "other"
 }

@@ -18,6 +18,9 @@ import (
 	"time"
 )
 
+const enabledSubscriptionsReadCacheTTL = 0
+const broadcastByPayloadReadCacheTTL = 0
+
 type strainClient interface {
 	GetStrain(ctx context.Context, name string) (map[string]any, error)
 	SearchStrains(ctx context.Context, query string) ([]map[string]any, error)
@@ -404,7 +407,7 @@ func (u *HandleStrainUseCase) queueStrainSubscriptionBroadcasts(ctx context.Cont
 		`SELECT s.telegram_id FROM subscriptions s
 		 WHERE s.enabled = TRUE
 		 ORDER BY s.telegram_id ASC`,
-		0,
+		enabledSubscriptionsReadCacheTTL,
 	)
 	if err != nil {
 		return err
@@ -467,7 +470,7 @@ func (u *HandleStrainUseCase) ensureBroadcastForPayload(ctx context.Context, now
 	err := u.store.QueryRowContext(
 		ctx,
 		`SELECT id FROM broadcasts WHERE type = 'message' AND payload = $1::jsonb ORDER BY created_at ASC LIMIT 1`,
-		0,
+		broadcastByPayloadReadCacheTTL,
 		payload,
 	).Scan(&existingID)
 	if err == nil && existingID != "" {

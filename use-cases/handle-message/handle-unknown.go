@@ -18,6 +18,8 @@ import (
 	"telegram-v2/utils/db"
 )
 
+const responsesLookupCacheTTL = 2 * time.Minute
+
 type HandleUnknownUseCase struct {
 	store     db.DB
 	analytics *utils.Analytics
@@ -72,7 +74,7 @@ func lookupResponse(ctx context.Context, conn db.DB, key string) (string, error)
 		return "", nil
 	}
 	var message string
-	err := conn.QueryRowContext(ctx, `SELECT message FROM responses WHERE key = $1`, 2*time.Minute, key).Scan(&message)
+	err := conn.QueryRowContext(ctx, `SELECT message FROM responses WHERE key = $1`, responsesLookupCacheTTL, key).Scan(&message)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil
 	}

@@ -25,6 +25,8 @@ import (
 	"telegram-v2/utils/db"
 )
 
+const whitelistLookupCacheTTL = 24 * time.Hour
+
 type urlStrainClient interface {
 	GetStrain(ctx context.Context, name string) (map[string]any, error)
 }
@@ -269,7 +271,7 @@ func parseStrainJSONArray(text string) []string {
 }
 
 func (u *HandleURLUseCase) isWhitelisted(ctx context.Context, rawURL string, host string) (bool, error) {
-	rows, err := u.store.QueryContext(ctx, `SELECT domain FROM whitelist`, 5*time.Minute)
+	rows, err := u.store.QueryContext(ctx, `SELECT domain FROM whitelist`, whitelistLookupCacheTTL)
 	if err != nil {
 		return false, err
 	}

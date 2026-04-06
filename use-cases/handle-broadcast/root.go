@@ -24,6 +24,9 @@ import (
 	"telegram-v2/utils/db"
 )
 
+const pendingOutgoingReadCacheTTL = 0
+const broadcastRunSlowThreshold = 2 * time.Second
+
 type RootUseCase struct {
 	store            db.DB
 	analytics        *utils.Analytics
@@ -62,8 +65,12 @@ func broadcastRunTimeout() time.Duration {
 }
 
 func (u *RootUseCase) RunOnce() error {
+	started := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), broadcastRunTimeout())
 	defer cancel()
+	processed := 0
+	sent := 0
+	aborted := 0
 
 	// One statement replaces hundreds of per-row subscription checks (avoids context deadline exceeded).
 	if err := u.closeStrainOutgoingWithoutSubscription(ctx); err != nil {
@@ -77,9 +84,9 @@ func (u *RootUseCase) RunOnce() error {
 		 INNER JOIN broadcasts b ON b.id = bo.broadcast_id
 		 WHERE bo.sent_time IS NULL
 		   AND (bo.scheduled_at IS NULL OR bo.scheduled_at <= NOW())
-		 ORDER BY bo.created_at ASC
+		 ORDER BY bo.created_at DESC
 		 LIMIT 500`,
-		0,
+		pendingOutgoingReadCacheTTL,
 	)
 	if err != nil {
 		return err
@@ -87,6 +94,7 @@ func (u *RootUseCase) RunOnce() error {
 	defer rows.Close()
 
 	for rows.Next() {
+		processed++
 		var broadcastID string
 		var userID int64
 		var kind string
@@ -114,6 +122,7 @@ func (u *RootUseCase) RunOnce() error {
 						if aborterr := u.abortUndeliverableOutgoing(ctx, broadcastID, userID); aborterr != nil {
 							return aborterr
 						}
+						aborted++
 						if u.log != nil {
 							u.log.Warn("broadcast row closed (undeliverable); will not retry broadcast_id=%s chat_id=%d", broadcastID, userID)
 						}
@@ -157,6 +166,7 @@ func (u *RootUseCase) RunOnce() error {
 							if aborterr := u.abortUndeliverableOutgoing(ctx, broadcastID, userID); aborterr != nil {
 								return aborterr
 							}
+							aborted++
 							if u.log != nil {
 								u.log.Warn("broadcast quiz row closed (undeliverable); will not retry broadcast_id=%s chat_id=%d", broadcastID, userID)
 							}
@@ -172,6 +182,7 @@ func (u *RootUseCase) RunOnce() error {
 		if !sentOK {
 			continue
 		}
+		sent++
 
 		if _, err := u.store.ExecContext(
 			ctx,
@@ -198,6 +209,14 @@ func (u *RootUseCase) RunOnce() error {
 	}
 	if err := rows.Err(); err != nil {
 		return err
+	}
+	if u.log != nil {
+		durationMs := time.Since(started).Milliseconds()
+		if time.Since(started) >= broadcastRunSlowThreshold {
+			u.log.Warn("event=broadcast-run status=slow duration_ms=%d processed=%d sent=%d aborted=%d", durationMs, processed, sent, aborted)
+		} else {
+			u.log.Info("event=broadcast-run status=ok duration_ms=%d processed=%d sent=%d aborted=%d", durationMs, processed, sent, aborted)
+		}
 	}
 	return nil
 }

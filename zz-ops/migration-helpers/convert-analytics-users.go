@@ -17,6 +17,8 @@ import (
 	"telegram-v2/utils/db"
 )
 
+const analyticsBackfillReadCacheTTL = 0
+
 func main() {
 	utils.Env.InitOps()
 
@@ -109,7 +111,7 @@ func main() {
 		) AS ids
 		WHERE telegram_id IS NOT NULL
 		ORDER BY telegram_id
-	`, 0)
+	`, analyticsBackfillReadCacheTTL)
 	if err != nil {
 		panic(fmt.Errorf("query analytics ids: %w", err))
 	}

@@ -13,6 +13,8 @@ import (
 	"telegram-v2/utils/db"
 )
 
+const subscriptionStateReadCacheTTL = 0
+
 type RootUseCase struct {
 	store     db.DB
 	analytics *utils.Analytics
@@ -27,7 +29,7 @@ func (u *RootUseCase) Handle(ctx context.Context, chatID int64) (string, error) 
 	err := u.store.QueryRowContext(
 		ctx,
 		`SELECT enabled FROM subscriptions WHERE telegram_id = $1`,
-		0,
+		subscriptionStateReadCacheTTL,
 		chatID,
 	).Scan(&enabled)
 

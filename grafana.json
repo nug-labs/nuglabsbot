@@ -1,0 +1,497 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_NUGLABS_PGQL",
+      "label": "NugLabs pgql",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "grafana-postgresql-datasource",
+      "pluginName": "PostgreSQL"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    { "type": "panel", "id": "barchart", "name": "Bar chart", "version": "" },
+    { "type": "panel", "id": "gauge", "name": "Gauge", "version": "" },
+    { "type": "panel", "id": "piechart", "name": "Pie chart", "version": "" },
+    { "type": "panel", "id": "stat", "name": "Stat", "version": "" },
+    { "type": "panel", "id": "table", "name": "Table", "version": "" },
+    { "type": "panel", "id": "timeseries", "name": "Time series", "version": "" },
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.3.3" },
+    { "type": "datasource", "id": "grafana-postgresql-datasource", "name": "PostgreSQL", "version": "1.0.0" }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } }, "mappings": [], "unitScale": true }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 4, "x": 0, "y": 0 },
+      "id": 12,
+      "options": { "displayLabels": ["percent"], "legend": { "calcs": [], "displayMode": "hidden", "placement": "right", "showLegend": false, "values": [] }, "pieType": "pie", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT user_label, SUM(query_count) AS query_count FROM (SELECT CONCAT(COALESCE(username, 'unknown'), ' (', from_id, ')') AS user_label, COUNT(*) AS query_count FROM analytics_events WHERE $__timeFilter(at) AND event_name = 'bot_text_query' GROUP BY 1 UNION ALL SELECT CONCAT(COALESCE(u.username, 'unknown'), ' (', a.user_id, ')') AS user_label, COUNT(*) AS query_count FROM app_analytics a LEFT JOIN users u ON u.telegram_id = a.user_id WHERE $__timeFilter(a.event_at) AND a.event_name IN ('unknown-response','url-processed','strain-found','strain-not-found') AND a.user_id IS NOT NULL GROUP BY 1) q GROUP BY user_label ORDER BY query_count DESC;",
+          "refId": "A"
+        }
+      ],
+      "title": "Text query requests per user",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } }, "mappings": [], "unitScale": true }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 4, "x": 4, "y": 0 },
+      "id": 14,
+      "options": { "displayLabels": ["percent"], "legend": { "calcs": [], "displayMode": "hidden", "placement": "right", "showLegend": false, "values": [] }, "pieType": "pie", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT user_label, SUM(query_count) AS query_count FROM (SELECT CONCAT(COALESCE(username, 'unknown'), ' (', from_id, ')') AS user_label, COUNT(*) AS query_count FROM analytics_events WHERE $__timeFilter(at) AND event_name = 'bot_strain_found' GROUP BY 1 UNION ALL SELECT CONCAT(COALESCE(u.username, 'unknown'), ' (', a.user_id, ')') AS user_label, COUNT(*) AS query_count FROM app_analytics a LEFT JOIN users u ON u.telegram_id = a.user_id WHERE $__timeFilter(a.event_at) AND a.event_name = 'strain-found' AND a.user_id IS NOT NULL GROUP BY 1) q GROUP BY user_label ORDER BY query_count DESC;",
+          "refId": "A"
+        }
+      ],
+      "title": "Successful strain finds per user",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } }, "mappings": [], "unitScale": true }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 4, "x": 8, "y": 0 },
+      "id": 13,
+      "options": { "displayLabels": ["percent"], "legend": { "calcs": [], "displayMode": "hidden", "placement": "right", "showLegend": false, "values": [] }, "pieType": "pie", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT user_label, SUM(query_count) AS query_count FROM (SELECT CONCAT(COALESCE(username, 'unknown'), ' (', from_id, ')') AS user_label, COUNT(*) AS query_count FROM analytics_events WHERE $__timeFilter(at) AND event_name = 'bot_strain_not_found' GROUP BY 1 UNION ALL SELECT CONCAT(COALESCE(u.username, 'unknown'), ' (', a.user_id, ')') AS user_label, COUNT(*) AS query_count FROM app_analytics a LEFT JOIN users u ON u.telegram_id = a.user_id WHERE $__timeFilter(a.event_at) AND a.event_name = 'strain-not-found' AND a.user_id IS NOT NULL GROUP BY 1) q GROUP BY user_label ORDER BY query_count DESC;",
+          "refId": "A"
+        }
+      ],
+      "title": "Unsuccessful strain requests by user",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unitScale": true }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT (SELECT COUNT(*) FROM analytics_events WHERE $__timeFilter(at) AND event_name = 'bot_strain_found') + (SELECT COUNT(*) FROM app_analytics WHERE $__timeFilter(event_at) AND event_name = 'strain-found') AS successful_strain_queries;",
+          "refId": "A"
+        }
+      ],
+      "title": "Successful strain queries",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unitScale": true }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT (SELECT COUNT(*) FROM analytics_events WHERE $__timeFilter(at) AND event_name = 'bot_strain_not_found') + (SELECT COUNT(*) FROM app_analytics WHERE $__timeFilter(event_at) AND event_name = 'strain-not-found') AS unsuccessful_strain_queries;",
+          "refId": "A"
+        }
+      ],
+      "title": "Unsuccessful strain queries",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "mappings": [], "thresholds": { "mode": "percentage", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 70 }, { "color": "dark-green", "value": 80 }] }, "unitScale": true }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "id": 3,
+      "options": { "minVizHeight": 75, "minVizWidth": 75, "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true, "sizing": "auto" },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH x AS (SELECT event_name FROM analytics_events WHERE $__timeFilter(at) AND event_name IN ('bot_strain_found','bot_strain_not_found') UNION ALL SELECT CASE WHEN event_name='strain-found' THEN 'bot_strain_found' WHEN event_name='strain-not-found' THEN 'bot_strain_not_found' ELSE event_name END FROM app_analytics WHERE $__timeFilter(event_at) AND event_name IN ('strain-found','strain-not-found')) SELECT COUNT(*) FILTER (WHERE event_name = 'bot_strain_found') * 100.0 / NULLIF(COUNT(*), 0) AS success_rate FROM x;",
+          "refId": "A"
+        }
+      ],
+      "title": "Success / Failure",
+      "type": "gauge"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 80 }] }, "unitScale": true }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 12 },
+      "id": 6,
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "last_seen" }] },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH misses AS (SELECT COALESCE(query, strain_name, 'unknown') AS query, at AS ts, from_id::bigint AS uid, COALESCE(username, 'id:' || from_id::text) AS uname FROM analytics_events WHERE $__timeFilter(at) AND event_name = 'bot_strain_not_found' UNION ALL SELECT COALESCE(meta->>'query', meta->>'name', meta->>'key', 'unknown') AS query, event_at AS ts, user_id AS uid, COALESCE(u.username, 'id:' || a.user_id::text) AS uname FROM app_analytics a LEFT JOIN users u ON u.telegram_id = a.user_id WHERE $__timeFilter(a.event_at) AND a.event_name = 'strain-not-found') SELECT query, COUNT(*) AS attempts, MAX(ts) AS last_seen, STRING_AGG(uname, ', ' ORDER BY ts DESC, uname ASC) AS users FROM misses GROUP BY query ORDER BY last_seen DESC, attempts DESC, query ASC LIMIT 50;",
+          "refId": "A"
+        }
+      ],
+      "title": "Failed strain search DLQ",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 109,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH activity AS (SELECT from_id::bigint AS uid, at AS ts FROM analytics_events WHERE from_id IS NOT NULL AND event_name IN ('bot_text_query','bot_paste_link','bot_strain_found','bot_strain_not_found') UNION ALL SELECT user_id AS uid, event_at AS ts FROM app_analytics WHERE user_id IS NOT NULL AND event_name IN ('unknown-response','url-processed','strain-found','strain-not-found')), scoped AS (SELECT uid, $__timeGroup(ts, $__interval) AS bucket FROM activity WHERE $__timeFilter(ts)), totals AS (SELECT bucket AS time, COUNT(DISTINCT uid)::double precision AS total_users FROM scoped GROUP BY 1), first_seen AS (SELECT uid, MIN(ts) AS first_seen FROM activity GROUP BY uid), news AS (SELECT $__timeGroup(first_seen, $__interval) AS time, COUNT(*)::double precision AS new_users FROM first_seen WHERE $__timeFilter(first_seen) GROUP BY 1), series AS (SELECT t.time, 'total_users'::text AS metric, t.total_users AS value FROM totals t UNION ALL SELECT t.time, 'new_users'::text AS metric, COALESCE(n.new_users, 0)::double precision AS value FROM totals t LEFT JOIN news n ON n.time = t.time UNION ALL SELECT t.time, 'returning_users'::text AS metric, GREATEST(t.total_users - COALESCE(n.new_users, 0), 0)::double precision AS value FROM totals t LEFT JOIN news n ON n.time = t.time) SELECT * FROM series ORDER BY time;",
+          "refId": "A"
+        }
+      ],
+      "title": "New users vs returning users (over time)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unitScale": true }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 3, "x": 0, "y": 8 },
+      "id": 7,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(DISTINCT uid) AS unique_users FROM (SELECT from_id::bigint AS uid FROM analytics_events WHERE $__timeFilter(at) AND event_name IN ('bot_text_query','bot_paste_link','bot_strain_found','bot_strain_not_found') AND from_id IS NOT NULL UNION SELECT user_id AS uid FROM app_analytics WHERE $__timeFilter(event_at) AND event_name IN ('unknown-response','url-processed','strain-found','strain-not-found') AND user_id IS NOT NULL) u;",
+          "refId": "A"
+        }
+      ],
+      "title": "Unique users",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unitScale": true }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 3, "x": 3, "y": 8 },
+      "id": 11,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH activity AS (SELECT from_id::bigint AS uid, at AS ts FROM analytics_events WHERE event_name IN ('bot_text_query','bot_paste_link','bot_strain_found','bot_strain_not_found') AND from_id IS NOT NULL UNION ALL SELECT user_id AS uid, event_at AS ts FROM app_analytics WHERE event_name IN ('unknown-response','url-processed','strain-found','strain-not-found') AND user_id IS NOT NULL) SELECT COUNT(DISTINCT a.uid) AS new_users FROM activity a WHERE a.ts >= $__timeFrom() AND a.ts <= $__timeTo() AND NOT EXISTS (SELECT 1 FROM activity prev WHERE prev.uid = a.uid AND prev.ts < $__timeFrom());",
+          "refId": "A"
+        }
+      ],
+      "title": "New users",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unitScale": true }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 3, "x": 6, "y": 8 },
+      "id": 10,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH bounds AS (SELECT $__timeFrom()::timestamptz AS start_time, $__timeTo()::timestamptz AS end_time), period AS (SELECT start_time, end_time, (end_time - start_time) AS duration FROM bounds), activity AS (SELECT from_id::bigint AS uid, at AS ts FROM analytics_events WHERE from_id IS NOT NULL AND event_name IN ('bot_text_query','bot_paste_link','bot_strain_found','bot_strain_not_found') UNION ALL SELECT user_id AS uid, event_at AS ts FROM app_analytics WHERE user_id IS NOT NULL AND event_name IN ('unknown-response','url-processed','strain-found','strain-not-found')), current_users AS (SELECT DISTINCT uid FROM activity, period WHERE ts >= period.start_time AND ts < period.end_time), previous_users AS (SELECT DISTINCT uid FROM activity, period WHERE ts >= (period.start_time - period.duration) AND ts < period.start_time) SELECT COUNT(*) AS returning_users FROM current_users cu JOIN previous_users pu ON cu.uid = pu.uid;",
+          "refId": "A"
+        }
+      ],
+      "title": "Rtrn users n chcksum",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unitScale": true }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 3, "x": 9, "y": 8 },
+      "id": 9,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH activity AS (SELECT from_id::bigint AS uid FROM analytics_events WHERE $__timeFilter(at) AND from_id IS NOT NULL AND event_name IN ('bot_text_query','bot_paste_link','bot_strain_found','bot_strain_not_found') UNION ALL SELECT user_id AS uid FROM app_analytics WHERE $__timeFilter(event_at) AND user_id IS NOT NULL AND event_name IN ('unknown-response','url-processed','strain-found','strain-not-found')) SELECT COUNT(*) * 1.0 / NULLIF(COUNT(DISTINCT uid), 0) AS queries_per_user FROM activity;",
+          "refId": "A"
+        }
+      ],
+      "title": "Avg queries per user",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "bars", "fillOpacity": 100, "gradientMode": "hue", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "normal" }, "thresholdsStyle": { "mode": "off" } }, "mappings": [], "unitScale": true }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "id": 8,
+      "options": { "legend": { "calcs": [], "displayMode": "hidden", "placement": "right", "showLegend": false }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroup(ts, $__interval) AS time, query, COUNT(*) AS value FROM (SELECT at AS ts, COALESCE(query, strain_name, 'unknown') AS query FROM analytics_events WHERE $__timeFilter(at) AND event_name = 'bot_strain_found' UNION ALL SELECT event_at AS ts, COALESCE(meta->>'query', meta->>'name', meta->>'resolved', 'unknown') AS query FROM app_analytics WHERE $__timeFilter(event_at) AND event_name = 'strain-found') q GROUP BY time, query ORDER BY time;",
+          "refId": "A"
+        }
+      ],
+      "title": "Successful strain query event breakdown",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "fillOpacity": 80, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineWidth": 1, "scaleDistribution": { "type": "linear" }, "thresholdsStyle": { "mode": "off" } }, "mappings": [], "unit": "short", "unitScale": true }, "overrides": [] },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 12 },
+      "id": 5,
+      "options": { "barRadius": 0, "barWidth": 0.97, "fullHighlight": false, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "right", "showLegend": true }, "orientation": "horizontal", "showValue": "never", "stacking": "none", "tooltip": { "mode": "single", "sort": "none" }, "xTickLabelRotation": 0, "xTickLabelSpacing": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT strain_name, COUNT(*) AS count FROM (SELECT COALESCE(strain_name, query, 'unknown') AS strain_name FROM analytics_events WHERE $__timeFilter(at) AND event_name = 'bot_strain_found' UNION ALL SELECT COALESCE(meta->>'name', meta->>'resolved', meta->>'query', 'unknown') AS strain_name FROM app_analytics WHERE $__timeFilter(event_at) AND event_name = 'strain-found') s GROUP BY strain_name ORDER BY count DESC LIMIT 10;",
+          "refId": "A"
+        }
+      ],
+      "title": "Most searched for",
+      "type": "barchart"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } }, "mappings": [], "unitScale": true }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 18 },
+      "id": 4,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT DATE_TRUNC('hour', ts) AS time, COUNT(*) AS value, event_name FROM (SELECT at AS ts, event_name FROM analytics_events WHERE $__timeFilter(at) UNION ALL SELECT event_at AS ts, event_name FROM app_analytics WHERE $__timeFilter(event_at)) e GROUP BY time, event_name ORDER BY time;",
+          "refId": "A"
+        }
+      ],
+      "title": "Event breakdown",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": {} },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 25 },
+      "id": 101,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(event_at, '5m'), event_name AS metric, COUNT(*) AS value FROM app_analytics WHERE $__timeFilter(event_at) GROUP BY 1,2 ORDER BY 1;",
+          "refId": "A"
+        }
+      ],
+      "title": "app_analytics events throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": {} },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 25 },
+      "id": 102,
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT event_name, event_status, COUNT(*) AS n FROM app_analytics WHERE $__timeFilter(event_at) GROUP BY event_name, event_status ORDER BY n DESC;",
+          "refId": "A"
+        }
+      ],
+      "title": "app_analytics status matrix",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 32 },
+      "id": 103,
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS value FROM broadcast_outgoing WHERE sent_time IS NULL;",
+          "refId": "A"
+        }
+      ],
+      "title": "OPS: pending broadcast outgoing",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 32 },
+      "id": 104,
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS value FROM subscriptions WHERE enabled = TRUE;",
+          "refId": "A"
+        }
+      ],
+      "title": "OPS: enabled subscriptions",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": {} },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 32 },
+      "id": 105,
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT event_at, event_name, event_status, user_id, entity_id FROM app_analytics WHERE $__timeFilter(event_at) ORDER BY event_at DESC LIMIT 200;",
+          "refId": "A"
+        }
+      ],
+      "title": "LOG EVENTS: recent app_analytics stream",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 36 },
+      "id": 106,
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS value FROM broadcast_outgoing WHERE sent_time IS NOT NULL AND $__timeFilter(sent_time);",
+          "refId": "A"
+        }
+      ],
+      "title": "Broadcasts sent",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "unit": "percent" } },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 36 },
+      "id": 107,
+      "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdMarkers": false },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT (COUNT(*) FILTER (WHERE telegram_message_id IS NOT NULL) * 100.0) / NULLIF(COUNT(*),0) AS value FROM broadcast_outgoing WHERE sent_time IS NOT NULL AND $__timeFilter(sent_time);",
+          "refId": "A"
+        }
+      ],
+      "title": "Broadcast delivery rate (message id)",
+      "type": "gauge"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": {} },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 36 },
+      "id": 108,
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT broadcast_id, COUNT(*) FILTER (WHERE sent_time IS NOT NULL) AS sent_rows, COUNT(*) FILTER (WHERE telegram_message_id IS NOT NULL) AS delivered_rows, MIN(created_at) AS first_queued_at, MAX(sent_time) AS last_sent_at, EXTRACT(EPOCH FROM (MAX(sent_time) - MIN(created_at)))::bigint AS queue_to_send_seconds FROM broadcast_outgoing WHERE created_at > NOW() - INTERVAL '30 days' GROUP BY broadcast_id ORDER BY last_sent_at DESC NULLS LAST LIMIT 100;",
+          "refId": "A"
+        }
+      ],
+      "title": "Broadcast timing and delivery by broadcast_id",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Nug Labs Bot Analytics",
+  "uid": "df7bfe5e-3429-4e00-a8a8-fb4df121ef3e",
+  "version": 48,
+  "weekStart": ""
+}
