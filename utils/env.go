@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -106,4 +107,19 @@ func readEnvFileNoOverride(path string) error {
 		}
 	}
 	return nil
+}
+
+// AssetsURL joins ASSETS_URL with a relative asset path.
+// If ASSETS_URL is empty, returns "".
+func (e *EnvManager) AssetsURL(assetPath string) string {
+	base := strings.TrimSpace(os.Getenv("ASSETS_URL"))
+	if base == "" {
+		return ""
+	}
+	base = strings.TrimRight(base, "/")
+	assetPath = strings.TrimSpace(assetPath)
+	if assetPath == "" {
+		return base
+	}
+	return base + "/" + path.Clean(strings.TrimLeft(assetPath, "/"))
 }

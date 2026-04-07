@@ -131,6 +131,7 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 			return err
 		}
 		results := make([]interface{}, 0, len(hits))
+		thumbURL := utils.Env.AssetsURL("nuglabsbot.png")
 		for i, hit := range hits {
 			name := fmt.Sprintf("%v", hit["name"])
 			body := handlemessage.FormatStrainHTML(hit)
@@ -139,6 +140,10 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 				name,
 				body,
 			)
+			article.Description = inlineResultDescription(hit)
+			if thumbURL != "" {
+				article.ThumbURL = thumbURL
+			}
 			results = append(results, article)
 		}
 		cfg := tgbotapi.InlineConfig{
@@ -188,4 +193,31 @@ func updateKind(update tgbotapi.Update) string {
 		return "inline"
 	}
 	return "other"
+}
+
+func inlineResultDescription(hit map[string]any) string {
+	strainType := strings.TrimSpace(fmt.Sprintf("%v", hit["type"]))
+	sm := strings.TrimSpace(fmt.Sprintf("%v", hit["description_sm"]))
+
+	base := sm
+	if strainType != "" && sm != "" {
+		base = strainType + " • " + sm
+	} else if strainType != "" {
+		base = strainType
+	}
+	return truncateRunes(base, 96)
+}
+
+func truncateRunes(s string, max int) string {
+	if max <= 0 {
+		return ""
+	}
+	rs := []rune(strings.TrimSpace(s))
+	if len(rs) <= max {
+		return string(rs)
+	}
+	if max == 1 {
+		return "…"
+	}
+	return string(rs[:max-1]) + "…"
 }

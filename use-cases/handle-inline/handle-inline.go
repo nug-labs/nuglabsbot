@@ -5,13 +5,12 @@ package handleinline
 
 import (
 	"context"
-	"sort"
 	"strings"
 	"telegram-v2/utils"
 )
 
-type searchClient interface {
-	SearchStrains(ctx context.Context, query string) ([]map[string]any, error)
+type getClient interface {
+	GetStrain(ctx context.Context, name string) (map[string]any, error)
 }
 
 type HandleInlineUseCase struct {
@@ -26,54 +25,49 @@ func NewHandleInlineUseCase(nuglabsClient any, analytics *utils.Analytics) *Hand
 // chatID is the Telegram chat id when known; inline updates often only have the user (private chat id equals user id).
 func (u *HandleInlineUseCase) Handle(ctx context.Context, userID, chatID int64, query string) ([]map[string]any, error) {
 	q := strings.TrimSpace(query)
-	client, ok := u.nuglabsClient.(searchClient)
+	client, ok := u.nuglabsClient.(getClient)
 	if !ok {
 		return []map[string]any{}, nil
 	}
 
-	hits, err := client.SearchStrains(ctx, q)
+	if q == "" {
+		return []map[string]any{}, nil
+	}
+
+	strain, err := client.GetStrain(ctx, q)
 	if err != nil {
 		if u.analytics != nil && q != "" {
 			_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
 				Name:   "inline-query",
 				UserID: userID,
 				Status: "error",
-				Meta:   utils.MetaWithChatID(chatID, map[string]any{"query_len": len(q)}),
+				Meta:   utils.MetaWithChatID(chatID, map[string]any{"query_len": len(q), "via": "get"}),
 			})
 		}
 		return nil, err
 	}
-	if len(hits) <= 2 {
-		if u.analytics != nil && q != "" {
+
+	// Intentionally no fuzzy search here — inline is "exact get only" to avoid janky suggestions.
+	if strain == nil {
+		if u.analytics != nil {
 			_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
 				Name:   "inline-query",
 				UserID: userID,
-				Status: "ok",
-				Meta:   utils.MetaWithChatID(chatID, map[string]any{"results": len(hits)}),
+				Status: "miss",
+				Meta:   utils.MetaWithChatID(chatID, map[string]any{"query_len": len(q), "via": "get"}),
 			})
 		}
-		return hits, nil
+		return []map[string]any{}, nil
 	}
 
-	sort.SliceStable(hits, func(i, j int) bool {
-		return scoreHit(hits[i]) > scoreHit(hits[j])
-	})
-	out := hits[:2]
-	if u.analytics != nil && q != "" {
+	out := []map[string]any{strain}
+	if u.analytics != nil {
 		_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
 			Name:   "inline-query",
 			UserID: userID,
 			Status: "ok",
-			Meta:   utils.MetaWithChatID(chatID, map[string]any{"results": len(out)}),
+			Meta:   utils.MetaWithChatID(chatID, map[string]any{"results": len(out), "via": "get"}),
 		})
 	}
 	return out, nil
-}
-
-func scoreHit(hit map[string]any) int {
-	name, _ := hit["name"].(string)
-	if name == "" {
-		return 0
-	}
-	return len(name)
 }
