@@ -4,7 +4,7 @@
 //
 // Group/supergroup chat_ids are negative in Telegram and are skipped. Private chat_id == user id.
 //
-// Run from app/telegram-v2: go run ./zz-ops/helpers/convert-analytics-users.go
+// Run from app/nuglabsbot-v2: go run ./zz-ops/helpers/convert-analytics-users.go
 package main
 
 import (
@@ -13,8 +13,8 @@ import (
 	"os"
 	"time"
 
-	"telegram-v2/utils"
-	"telegram-v2/utils/db"
+	"nuglabsbot-v2/utils"
+	"nuglabsbot-v2/utils/db"
 )
 
 const analyticsBackfillReadCacheTTL = 0
@@ -34,7 +34,7 @@ func main() {
 	rows, err := database.QueryContext(ctx, `
 		SELECT DISTINCT telegram_id
 		FROM (
-			-- telegram-v2 app_analytics
+			-- nuglabsbot-v2 app_analytics
 			SELECT user_id AS telegram_id
 			FROM app_analytics
 			WHERE user_id IS NOT NULL AND user_id > 0

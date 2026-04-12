@@ -11,22 +11,22 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	nuglabs "github.com/nug-labs/go-sdk"
-	bgservices "telegram-v2/bg-services"
-	"telegram-v2/controllers"
-	"telegram-v2/middleware"
-	"telegram-v2/routes"
-	handlebroadcast "telegram-v2/use-cases/handle-broadcast"
-	handlecommand "telegram-v2/use-cases/handle-command"
-	handleevents "telegram-v2/use-cases/handle-events"
-	handleinline "telegram-v2/use-cases/handle-inline"
-	handlemessage "telegram-v2/use-cases/handle-message"
-	handlesubscribe "telegram-v2/use-cases/handle-subscribe"
-	"telegram-v2/utils"
-	"telegram-v2/utils/db"
+	bgservices "nuglabsbot-v2/bg-services"
+	"nuglabsbot-v2/controllers"
+	"nuglabsbot-v2/middleware"
+	"nuglabsbot-v2/routes"
+	handlebroadcast "nuglabsbot-v2/use-cases/handle-broadcast"
+	handlecommand "nuglabsbot-v2/use-cases/handle-command"
+	handleevents "nuglabsbot-v2/use-cases/handle-events"
+	handleinline "nuglabsbot-v2/use-cases/handle-inline"
+	handlemessage "nuglabsbot-v2/use-cases/handle-message"
+	handlesubscribe "nuglabsbot-v2/use-cases/handle-subscribe"
+	"nuglabsbot-v2/utils"
+	"nuglabsbot-v2/utils/db"
 )
 
 /*
-app.go is the composition root for telegram-v2.
+app.go is the composition root for nuglabsbot-v2.
 It wires utils, middleware, controllers, use-cases, and background services.
 It does not hold business rules; route/update dispatch lives in routes package.
 */
@@ -107,9 +107,9 @@ func main() {
 	} else {
 		logger.Info("background services skipped (set APP_ENV=live or APP_ENV=test to enable broadcast scheduler)")
 	}
-	logger.Info("telegram-v2 composition root initialized")
+	logger.Info("nuglabsbot-v2 composition root initialized")
 	<-ctx.Done()
-	logger.Info("telegram-v2 shutting down")
+	logger.Info("nuglabsbot-v2 shutting down")
 }
 
 type telegramBroadcaster struct {

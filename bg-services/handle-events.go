@@ -8,8 +8,8 @@ package bgservices
 import (
 	"context"
 
-	handleevents "telegram-v2/use-cases/handle-events"
-	"telegram-v2/utils"
+	handleevents "nuglabsbot-v2/use-cases/handle-events"
+	"nuglabsbot-v2/utils"
 )
 
 type HandleEventsService struct {

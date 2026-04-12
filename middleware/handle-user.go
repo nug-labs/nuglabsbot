@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"time"
 
-	"telegram-v2/utils"
-	"telegram-v2/utils/db"
+	"nuglabsbot-v2/utils"
+	"nuglabsbot-v2/utils/db"
 )
 
 type TelegramUser struct {

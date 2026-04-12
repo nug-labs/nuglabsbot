@@ -1,5 +1,5 @@
 /*
-Package utils/env handles environment bootstrapping for telegram-v2.
+Package utils/env handles environment bootstrapping for nuglabsbot-v2.
 Injected from composition roots (app + zz-ops) before dependencies are built.
 Workflow stage: process startup configuration loading.
 */

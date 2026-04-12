@@ -1,5 +1,5 @@
 /*
-Package db is the database layer for telegram-v2: Postgres via pgx/stdlib (simple protocol for pooler compatibility), optional TTL read cache,
+Package db is the database layer for nuglabsbot-v2: Postgres via pgx/stdlib (simple protocol for pooler compatibility), optional TTL read cache,
 and the DB facade used by use cases.
 
 Composition: database.go (connection + facade), cache.go (TTL keys), materialized.go (cached row types),

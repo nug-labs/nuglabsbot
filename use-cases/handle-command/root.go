@@ -9,7 +9,7 @@ package handlecommand
 import (
 	"context"
 	"strings"
-	"telegram-v2/utils"
+	"nuglabsbot-v2/utils"
 )
 
 type RootUseCase struct {

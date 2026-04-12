@@ -1,7 +1,7 @@
 /*
 Package utils analytics provides an in-memory queue for events; bg-services/handle-events
 persists to app_analytics so update handlers are not blocked on DB inserts.
-See analytics.md in the telegram-v2 module root for the full event catalog.
+See analytics.md in the nuglabsbot-v2 module root for the full event catalog.
 */
 package utils
 

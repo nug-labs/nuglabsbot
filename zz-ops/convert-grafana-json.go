@@ -2,11 +2,11 @@
 convert-grafana-json creates env-specific Grafana dashboards from template JSON files.
 It uses utils.Env.InitOps() so zz-ops keeps the same interactive live/test prompt behavior.
 
-Output files are written into app/telegram-v2 root:
+Output files are written into app/nuglabsbot-v2 root:
   - live-grafana.json
   - test-grafana.json
 
-Run from app/telegram-v2:
+Run from app/nuglabsbot-v2:
 
 	go run ./zz-ops/convert-grafana-json.go
 */
@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"telegram-v2/utils"
+	"nuglabsbot-v2/utils"
 )
 
 type dashboard struct {

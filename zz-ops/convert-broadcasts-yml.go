@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"telegram-v2/utils"
-	"telegram-v2/utils/db"
+	"nuglabsbot-v2/utils"
+	"nuglabsbot-v2/utils/db"
 )
 
 // moveBroadcastToComplete relocates a successfully loaded YAML into assets/broadcasts/complete/.

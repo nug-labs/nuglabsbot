@@ -20,8 +20,8 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
-	"telegram-v2/utils"
-	"telegram-v2/utils/db"
+	"nuglabsbot-v2/utils"
+	"nuglabsbot-v2/utils/db"
 )
 
 const pendingOutgoingReadCacheTTL = 0

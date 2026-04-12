@@ -9,7 +9,7 @@ package controllers
 import (
 	"context"
 	"strings"
-	"telegram-v2/utils"
+	"nuglabsbot-v2/utils"
 )
 
 type StrainHandler interface {

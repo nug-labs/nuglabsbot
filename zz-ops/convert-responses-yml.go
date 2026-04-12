@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"telegram-v2/utils"
-	"telegram-v2/utils/db"
+	"nuglabsbot-v2/utils"
+	"nuglabsbot-v2/utils/db"
 )
 
 func main() {

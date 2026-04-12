@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"telegram-v2/utils"
+	"nuglabsbot-v2/utils"
 )
 
 const deferredWriteQueueSize = 512

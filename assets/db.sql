@@ -53,7 +53,9 @@ CREATE TABLE IF NOT EXISTS broadcasts (
   -- sent_at: last completed wave (all outgoing rows sent); updated by handle-broadcast.
   sent_at TIMESTAMPTZ,
   -- audience: same semantics as convert-broadcasts YAML (all, active_users); NULL = all users.
-  audience TEXT
+  audience TEXT,
+  -- env: optional environment marker for cross-bot tooling (e.g. mgmt approvals).
+  env TEXT NOT NULL DEFAULT 'live'
 );
 
 CREATE TABLE IF NOT EXISTS broadcast_outgoing (
@@ -74,6 +76,7 @@ ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS frequency INTEGER CHECK (frequen
 ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ;
 ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS audience TEXT;
 ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS env TEXT NOT NULL DEFAULT 'live';
 
 CREATE TABLE IF NOT EXISTS app_analytics (
   id BIGSERIAL PRIMARY KEY,

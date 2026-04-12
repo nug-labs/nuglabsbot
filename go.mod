@@ -1,4 +1,4 @@
-module telegram-v2
+module nuglabsbot-v2
 
 go 1.24.0
 

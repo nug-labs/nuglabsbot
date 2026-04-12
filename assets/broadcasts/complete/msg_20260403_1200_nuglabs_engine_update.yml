@@ -8,7 +8,7 @@ order: 1
 text: |
   <b>What’s new under the hood at Nug Labs</b>
 
-  We’ve been running the bot on a <b>new engine</b> (<code>telegram-v2</code>): same strain search and deep links you rely on, with a clearer architecture and room to grow.
+  We’ve been running the bot on a <b>new engine</b> (<code>nuglabsbot-v2</code>): same strain search and deep links you rely on, with a clearer architecture and room to grow.
 
   <b>Compared to the previous stack</b>
   • <b>Runtime:</b> the live service is now <b>Go</b> end-to-end (long polling, structured routes and use-cases) instead of the older <b>Node + Telegraf</b> app.

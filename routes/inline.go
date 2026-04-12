@@ -7,9 +7,9 @@ package routes
 import (
 	"context"
 
-	"telegram-v2/controllers"
-	"telegram-v2/middleware"
-	"telegram-v2/utils"
+	"nuglabsbot-v2/controllers"
+	"nuglabsbot-v2/middleware"
+	"nuglabsbot-v2/utils"
 )
 
 type InlineRoute struct {

@@ -14,9 +14,9 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"telegram-v2/middleware"
-	"telegram-v2/use-cases/handle-message"
-	"telegram-v2/utils"
+	"nuglabsbot-v2/middleware"
+	"nuglabsbot-v2/use-cases/handle-message"
+	"nuglabsbot-v2/utils"
 )
 
 type UpdateRouter struct {

@@ -4,15 +4,18 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 )
 
 type Logger struct {
-	l *log.Logger
+	l   *log.Logger
+	env string
 }
 
 func NewLogger() *Logger {
 	return &Logger{
-		l: log.New(os.Stdout, "", log.LstdFlags|log.LUTC|log.Lshortfile),
+		l:   log.New(os.Stdout, "", log.LstdFlags|log.LUTC|log.Lshortfile),
+		env: currentAppEnv(),
 	}
 }
 
@@ -38,7 +41,7 @@ func NewAsyncLogger(ctx context.Context) *Logger {
 		}
 	}()
 	w := &asyncLogWriter{ch: ch, ctx: ctx}
-	return &Logger{l: log.New(w, "", log.LstdFlags|log.LUTC|log.Lshortfile)}
+	return &Logger{l: log.New(w, "", log.LstdFlags|log.LUTC|log.Lshortfile), env: currentAppEnv()}
 }
 
 type asyncLogWriter struct {
@@ -62,13 +65,25 @@ func (w *asyncLogWriter) Write(p []byte) (n int, err error) {
 }
 
 func (lg *Logger) Info(msg string, args ...any) {
-	lg.l.Printf("INFO: "+msg, args...)
+	lg.l.Printf(lg.prefix("INFO")+msg, args...)
 }
 
 func (lg *Logger) Warn(msg string, args ...any) {
-	lg.l.Printf("WARN: "+msg, args...)
+	lg.l.Printf(lg.prefix("WARN")+msg, args...)
 }
 
 func (lg *Logger) Error(msg string, args ...any) {
-	lg.l.Printf("ERROR: "+msg, args...)
+	lg.l.Printf(lg.prefix("ERROR")+msg, args...)
+}
+
+func (lg *Logger) prefix(level string) string {
+	env := lg.env
+	if strings.TrimSpace(env) == "" {
+		env = "unset"
+	}
+	return level + " [APP_ENV=" + env + "]: "
+}
+
+func currentAppEnv() string {
+	return strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV")))
 }
