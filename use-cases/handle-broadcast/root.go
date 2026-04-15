@@ -84,6 +84,7 @@ func (u *RootUseCase) RunOnce() error {
 		 INNER JOIN broadcasts b ON b.id = bo.broadcast_id
 		 WHERE bo.sent_time IS NULL
 		   AND (bo.scheduled_at IS NULL OR bo.scheduled_at <= NOW())
+		   AND GREATEST(COALESCE(bo.scheduled_at, '-infinity'::timestamptz), bo.created_at) >= NOW() - INTERVAL '12 hours'
 		 ORDER BY bo.created_at DESC
 		 LIMIT 500`,
 		pendingOutgoingReadCacheTTL,

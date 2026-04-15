@@ -414,6 +414,11 @@ func (u *HandleStrainUseCase) queueStrainSubscriptionBroadcasts(ctx context.Cont
 	}
 	defer rows.Close()
 
+	// TODO - NEED TO REFACTOR. 1.1s query :/
+	// Probs expand into services and repos idk yet
+	// Thought I could get away with js use-cases hahaha
+	// Granted it is 3 separate queries to remote db.
+	// Will think on it
 	now := time.Now().UTC()
 	var idx int64
 	var queued int
