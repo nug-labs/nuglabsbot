@@ -30,11 +30,12 @@ type HandleStrainUseCase struct {
 	nuglabsClient any
 	analytics     *utils.Analytics
 	store         db.DB
+	deferred      *db.DeferredWriteQueue
 	logger        *utils.Logger
 }
 
-func NewHandleStrainUseCase(nuglabsClient any, analytics *utils.Analytics, store db.DB, logger *utils.Logger) *HandleStrainUseCase {
-	return &HandleStrainUseCase{nuglabsClient: nuglabsClient, analytics: analytics, store: store, logger: logger}
+func NewHandleStrainUseCase(nuglabsClient any, analytics *utils.Analytics, store db.DB, deferred *db.DeferredWriteQueue, logger *utils.Logger) *HandleStrainUseCase {
+	return &HandleStrainUseCase{nuglabsClient: nuglabsClient, analytics: analytics, store: store, deferred: deferred, logger: logger}
 }
 
 func (u *HandleStrainUseCase) Handle(ctx context.Context, actorUserID, chatID int64, input string) (string, error) {
@@ -396,13 +397,31 @@ func fanoutStrainKey(strainName, searchQuery, message string) string {
 // 1) Reuse or create a single broadcasts row per identical body (ensureBroadcastForPayload matches payload jsonb).
 // 2) Upsert broadcast_outgoing for every enabled subscription; repeat searches re-queue (sent_time cleared on conflict).
 // 3) bg-services/handle-broadcast sends rows with sent_time IS NULL.
+//
+// DB work runs on DeferredWriteQueue when configured so strain lookup can return before Supabase fan-out finishes.
 func (u *HandleStrainUseCase) queueStrainSubscriptionBroadcasts(ctx context.Context, message, strainName, searchQuery string) error {
 	if u.store == nil || strings.TrimSpace(message) == "" {
 		return nil
 	}
+	if u.deferred != nil {
+		msg, sn, sq := message, strainName, searchQuery
+		enqErr := u.deferred.Enqueue(func(c context.Context, conn db.DB) error {
+			return u.queueStrainSubscriptionBroadcastsWithStore(c, conn, msg, sn, sq)
+		})
+		if enqErr == nil {
+			return nil
+		}
+		if u.logger != nil {
+			u.logger.Warn("strain broadcast deferred queue full, running sync: %v", enqErr)
+		}
+	}
+	return u.queueStrainSubscriptionBroadcastsWithStore(ctx, u.store, message, strainName, searchQuery)
+}
+
+func (u *HandleStrainUseCase) queueStrainSubscriptionBroadcastsWithStore(ctx context.Context, conn db.DB, message, strainName, searchQuery string) error {
 	key := fanoutStrainKey(strainName, searchQuery, message)
 
-	rows, err := u.store.QueryContext(
+	rows, err := conn.QueryContext(
 		ctx,
 		`SELECT s.telegram_id FROM subscriptions s
 		 WHERE s.enabled = TRUE
@@ -414,11 +433,6 @@ func (u *HandleStrainUseCase) queueStrainSubscriptionBroadcasts(ctx context.Cont
 	}
 	defer rows.Close()
 
-	// TODO - NEED TO REFACTOR. 1.1s query :/
-	// Probs expand into services and repos idk yet
-	// Thought I could get away with js use-cases hahaha
-	// Granted it is 3 separate queries to remote db.
-	// Will think on it
 	now := time.Now().UTC()
 	var idx int64
 	var queued int
@@ -434,14 +448,14 @@ func (u *HandleStrainUseCase) queueStrainSubscriptionBroadcasts(ctx context.Cont
 			return err
 		}
 		payload := string(payloadRaw)
-		broadcastID, err := u.ensureBroadcastForPayload(ctx, now, payload, idx, telegramID)
+		broadcastID, err := u.ensureBroadcastForPayload(ctx, conn, now, payload, idx, telegramID)
 		if err != nil {
 			if u.logger != nil {
 				u.logger.Warn("skip broadcast row for chat %d: ensure broadcast failed: %v", telegramID, err)
 			}
 			continue
 		}
-		res, err := u.store.ExecContext(
+		res, err := conn.ExecContext(
 			ctx,
 			`INSERT INTO broadcast_outgoing (broadcast_id, user_id, scheduled_at, sent_time)
 			 VALUES ($1, $2, $3, NULL)
@@ -470,9 +484,9 @@ func (u *HandleStrainUseCase) queueStrainSubscriptionBroadcasts(ctx context.Cont
 	return nil
 }
 
-func (u *HandleStrainUseCase) ensureBroadcastForPayload(ctx context.Context, now time.Time, payload string, idx int64, telegramID int64) (string, error) {
+func (u *HandleStrainUseCase) ensureBroadcastForPayload(ctx context.Context, conn db.DB, now time.Time, payload string, idx int64, telegramID int64) (string, error) {
 	var existingID string
-	err := u.store.QueryRowContext(
+	err := conn.QueryRowContext(
 		ctx,
 		`SELECT id FROM broadcasts WHERE type = 'message' AND payload = $1::jsonb ORDER BY created_at ASC LIMIT 1`,
 		broadcastByPayloadReadCacheTTL,
@@ -485,7 +499,7 @@ func (u *HandleStrainUseCase) ensureBroadcastForPayload(ctx context.Context, now
 		return "", err
 	}
 	broadcastID := fmt.Sprintf("strain-%d-%d-%d", now.UnixNano(), telegramID, idx)
-	if _, err := u.store.ExecContext(
+	if _, err := conn.ExecContext(
 		ctx,
 		`INSERT INTO broadcasts (id, type, payload, created_at) VALUES ($1, 'message', $2::jsonb, $3)`,
 		broadcastID, payload, now,

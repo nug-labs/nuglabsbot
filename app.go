@@ -79,7 +79,7 @@ func main() {
 	}
 
 	handleUnknownUC := handlemessage.NewHandleUnknownUseCase(database, analytics)
-	handleStrainUC := handlemessage.NewHandleStrainUseCase(nugClient, analytics, database, logger)
+	handleStrainUC := handlemessage.NewHandleStrainUseCase(nugClient, analytics, database, deferredWrites, logger)
 	handleURLUC := handlemessage.NewHandleURLUseCase(database, analytics, nugClient, logger)
 	handleMessageRootUC := handlemessage.NewRootUseCase(handleURLUC, handleStrainUC, handleUnknownUC, analytics)
 
