@@ -1,6 +1,6 @@
 /*
-Package routes/update receives Telegram updates (long polling via UpdateRouter.Run) and dispatches
-to command/message/inline routes with injected middleware/controller chains.
+Package routes receives Telegram updates (long polling via UpdateRouter.Run) and dispatches
+to command/message/inline/empty routes with injected middleware/controller chains.
 Workflow stage: transport routing (no business rules here).
 */
 package routes
@@ -25,6 +25,7 @@ type UpdateRouter struct {
 	messageRoute *MessageRoute
 	commandRoute *CommandRoute
 	inlineRoute  *InlineRoute
+	emptyRoute   *EmptyRoute
 }
 
 func NewUpdateRouter(
@@ -33,6 +34,7 @@ func NewUpdateRouter(
 	messageRoute *MessageRoute,
 	commandRoute *CommandRoute,
 	inlineRoute *InlineRoute,
+	emptyRoute *EmptyRoute,
 ) *UpdateRouter {
 	return &UpdateRouter{
 		bot:          bot,
@@ -40,6 +42,7 @@ func NewUpdateRouter(
 		messageRoute: messageRoute,
 		commandRoute: commandRoute,
 		inlineRoute:  inlineRoute,
+		emptyRoute:   emptyRoute,
 	}
 }
 
@@ -106,7 +109,15 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 			body = strings.TrimSpace(update.Message.Caption)
 		}
 		if body == "" {
-			return nil
+			reply, err := r.emptyRoute.Handle(ctx, update)
+			if err != nil {
+				return err
+			}
+			if strings.TrimSpace(reply) == "" {
+				return nil
+			}
+			_, err = r.bot.Send(newHTMLMessageIfNeeded(update.Message.Chat.ID, reply))
+			return err
 		}
 		reply, err := r.messageRoute.Handle(ctx, user, update.Message.Chat.ID, body)
 		if err != nil {

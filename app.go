@@ -17,6 +17,7 @@ import (
 	"nuglabsbot-v2/routes"
 	handlebroadcast "nuglabsbot-v2/use-cases/handle-broadcast"
 	handlecommand "nuglabsbot-v2/use-cases/handle-command"
+	handleempty "nuglabsbot-v2/use-cases/handle-empty"
 	handleevents "nuglabsbot-v2/use-cases/handle-events"
 	handleinline "nuglabsbot-v2/use-cases/handle-inline"
 	handlemessage "nuglabsbot-v2/use-cases/handle-message"
@@ -86,17 +87,20 @@ func main() {
 	handlePolicyUC := handlecommand.NewRootUseCase(handlecommand.NewHandlePolicyUseCase(), analytics)
 	handleSubscribeUC := handlesubscribe.NewRootUseCase(database, analytics)
 	handleInlineUC := handleinline.NewHandleInlineUseCase(nugClient, analytics)
+	handleEmptyUC := handleempty.NewRootUseCase(bot, analytics)
 	handleBroadcastUC := handlebroadcast.NewRootUseCase(database, analytics, broadcastSender, broadcastSender, logger)
 
 	userMiddleware := middleware.NewHandleUserMiddleware(database, analytics, deferredWrites)
 	messageController := controllers.NewMessageController(handleMessageRootUC)
 	commandController := controllers.NewCommandController(handleStrainUC, handlePolicyUC, handleSubscribeUC, analytics)
 	inlineController := controllers.NewInlineController(handleInlineUC, handleStrainUC)
+	emptyController := controllers.NewEmptyController(handleEmptyUC)
 
 	messageRoute := routes.NewMessageRoute(userMiddleware, messageController, logger)
 	commandRoute := routes.NewCommandRoute(userMiddleware, commandController, logger)
 	inlineRoute := routes.NewInlineRoute(userMiddleware, inlineController, logger)
-	updateRouter := routes.NewUpdateRouter(bot, logger, messageRoute, commandRoute, inlineRoute)
+	emptyRoute := routes.NewEmptyRoute(emptyController, logger)
+	updateRouter := routes.NewUpdateRouter(bot, logger, messageRoute, commandRoute, inlineRoute, emptyRoute)
 	broadcastService := bgservices.NewHandleBroadcastService(handleBroadcastUC, logger)
 
 	go updateRouter.Run(ctx)
