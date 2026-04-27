@@ -7,6 +7,7 @@ package routes
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -20,12 +21,13 @@ import (
 )
 
 type UpdateRouter struct {
-	bot          *tgbotapi.BotAPI
-	log          *utils.Logger
-	messageRoute *MessageRoute
-	commandRoute *CommandRoute
-	inlineRoute  *InlineRoute
-	emptyRoute   *EmptyRoute
+	bot             *tgbotapi.BotAPI
+	log             *utils.Logger
+	messageRoute    *MessageRoute
+	commandRoute    *CommandRoute
+	inlineRoute     *InlineRoute
+	emptyRoute      *EmptyRoute
+	chatMemberRoute *ChatMemberRoute
 }
 
 func NewUpdateRouter(
@@ -35,14 +37,16 @@ func NewUpdateRouter(
 	commandRoute *CommandRoute,
 	inlineRoute *InlineRoute,
 	emptyRoute *EmptyRoute,
+	chatMemberRoute *ChatMemberRoute,
 ) *UpdateRouter {
 	return &UpdateRouter{
-		bot:          bot,
-		log:          log,
-		messageRoute: messageRoute,
-		commandRoute: commandRoute,
-		inlineRoute:  inlineRoute,
-		emptyRoute:   emptyRoute,
+		bot:             bot,
+		log:             log,
+		messageRoute:    messageRoute,
+		commandRoute:    commandRoute,
+		inlineRoute:     inlineRoute,
+		emptyRoute:      emptyRoute,
+		chatMemberRoute: chatMemberRoute,
 	}
 }
 
@@ -56,6 +60,10 @@ func (r *UpdateRouter) Run(ctx context.Context) {
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = getUpdatesTimeoutSeconds()
+	// Telegram: default getUpdates does not include chat_member (see Bot API "allowed_updates").
+	// Member leave/kick is often only delivered as ChatMember, not as Message.left_chat_member.
+	// The bot must be an administrator in the group/supergroup to receive chat_member updates.
+	u.AllowedUpdates = []string{"message", "inline_query", "chat_member"}
 	updates := r.bot.GetUpdatesChan(u)
 	defer r.bot.StopReceivingUpdates()
 
@@ -84,6 +92,14 @@ func (r *UpdateRouter) Run(ctx context.Context) {
 
 // HandleUpdate processes a single update (long poll or tests).
 func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update) error {
+	// TEMPORARY: full raw Telegram update as JSON; remove after debugging (join/leave, chat_member, etc.).
+	if r.log != nil {
+		if raw, err := json.Marshal(update); err != nil {
+			r.log.Warn("event=raw-update-temp status=marshal_error err=%v", err)
+		} else {
+			r.log.Info("event=raw-update-temp json=%s", string(raw))
+		}
+	}
 	if update.Message != nil {
 		user := middleware.TelegramUser{
 			TelegramID: update.Message.From.ID,
@@ -109,7 +125,19 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 			body = strings.TrimSpace(update.Message.Caption)
 		}
 		if body == "" {
-			reply, err := r.emptyRoute.Handle(ctx, update)
+			reply, err := r.chatMemberRoute.HandleMessage(ctx, update)
+			if err != nil {
+				return err
+			}
+			if strings.TrimSpace(reply) != "" {
+				_, err = r.bot.Send(newHTMLMessageIfNeeded(update.Message.Chat.ID, reply))
+				return err
+			}
+			// Member service messages are fully handled in chat-member flow; skip empty tracker to avoid duplicate events.
+			if len(update.Message.NewChatMembers) > 0 || update.Message.LeftChatMember != nil {
+				return nil
+			}
+			reply, err = r.emptyRoute.Handle(ctx, update)
 			if err != nil {
 				return err
 			}
@@ -166,6 +194,12 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 		_, err = r.bot.Request(cfg)
 		return err
 	}
+
+	if update.ChatMember != nil {
+		if err := r.chatMemberRoute.Handle(ctx, update.ChatMember); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -202,6 +236,9 @@ func updateKind(update tgbotapi.Update) string {
 	}
 	if update.InlineQuery != nil {
 		return "inline"
+	}
+	if update.ChatMember != nil {
+		return "chat_member"
 	}
 	return "other"
 }

@@ -16,6 +16,7 @@ import (
 	"nuglabsbot-v2/middleware"
 	"nuglabsbot-v2/routes"
 	handlebroadcast "nuglabsbot-v2/use-cases/handle-broadcast"
+	handlechatmember "nuglabsbot-v2/use-cases/handle-chat-member"
 	handlecommand "nuglabsbot-v2/use-cases/handle-command"
 	handleempty "nuglabsbot-v2/use-cases/handle-empty"
 	handleevents "nuglabsbot-v2/use-cases/handle-events"
@@ -87,7 +88,8 @@ func main() {
 	handlePolicyUC := handlecommand.NewRootUseCase(handlecommand.NewHandlePolicyUseCase(), analytics)
 	handleSubscribeUC := handlesubscribe.NewRootUseCase(database, analytics)
 	handleInlineUC := handleinline.NewHandleInlineUseCase(nugClient, analytics)
-	handleEmptyUC := handleempty.NewRootUseCase(bot, analytics)
+	handleEmptyUC := handleempty.NewRootUseCase(analytics)
+	handleChatMemberUC := handlechatmember.NewRootUseCase(bot, analytics)
 	handleBroadcastUC := handlebroadcast.NewRootUseCase(database, analytics, broadcastSender, broadcastSender, logger)
 
 	userMiddleware := middleware.NewHandleUserMiddleware(database, analytics, deferredWrites)
@@ -95,12 +97,14 @@ func main() {
 	commandController := controllers.NewCommandController(handleStrainUC, handlePolicyUC, handleSubscribeUC, analytics)
 	inlineController := controllers.NewInlineController(handleInlineUC, handleStrainUC)
 	emptyController := controllers.NewEmptyController(handleEmptyUC)
+	chatMemberController := controllers.NewChatMemberController(handleChatMemberUC)
 
 	messageRoute := routes.NewMessageRoute(userMiddleware, messageController, logger)
 	commandRoute := routes.NewCommandRoute(userMiddleware, commandController, logger)
 	inlineRoute := routes.NewInlineRoute(userMiddleware, inlineController, logger)
 	emptyRoute := routes.NewEmptyRoute(emptyController, logger)
-	updateRouter := routes.NewUpdateRouter(bot, logger, messageRoute, commandRoute, inlineRoute, emptyRoute)
+	chatMemberRoute := routes.NewChatMemberRoute(chatMemberController, logger)
+	updateRouter := routes.NewUpdateRouter(bot, logger, messageRoute, commandRoute, inlineRoute, emptyRoute, chatMemberRoute)
 	broadcastService := bgservices.NewHandleBroadcastService(handleBroadcastUC, logger)
 
 	go updateRouter.Run(ctx)
