@@ -13,6 +13,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -27,12 +28,18 @@ import (
 const pendingOutgoingReadCacheTTL = 0
 const broadcastRunSlowThreshold = 2 * time.Second
 
+// SubscriptionStrainCardBuilder rebuilds live strain cards for subscription fan-out (per-recipient encounters + press button).
+type SubscriptionStrainCardBuilder interface {
+	BuildSubscriptionStrainCard(ctx context.Context, recipientTelegramID int64, strainCanonical string) (utils.OutboundMessage, error)
+}
+
 type RootUseCase struct {
-	store            db.DB
-	analytics        *utils.Analytics
-	messageBroadcast MessageBroadcaster
-	quizBroadcaster  QuizBroadcaster
-	log              *utils.Logger
+	store                  db.DB
+	analytics              *utils.Analytics
+	messageBroadcast       MessageBroadcaster
+	quizBroadcaster        QuizBroadcaster
+	strainSubscriptionCard SubscriptionStrainCardBuilder
+	log                    *utils.Logger
 }
 
 func NewRootUseCase(
@@ -40,14 +47,16 @@ func NewRootUseCase(
 	analytics *utils.Analytics,
 	messageBroadcaster MessageBroadcaster,
 	quizBroadcaster QuizBroadcaster,
+	strainSubscriptionCards SubscriptionStrainCardBuilder,
 	log *utils.Logger,
 ) *RootUseCase {
 	return &RootUseCase{
-		store:            store,
-		analytics:        analytics,
-		messageBroadcast: messageBroadcaster,
-		quizBroadcaster:  quizBroadcaster,
-		log:              log,
+		store:                  store,
+		analytics:              analytics,
+		messageBroadcast:       messageBroadcaster,
+		quizBroadcaster:        quizBroadcaster,
+		strainSubscriptionCard: strainSubscriptionCards,
+		log:                    log,
 	}
 }
 
@@ -112,9 +121,23 @@ func (u *RootUseCase) RunOnce() error {
 
 		switch kind {
 		case "message":
-			text, _ := payload["text"].(string)
-			if text != "" && u.messageBroadcast != nil {
-				mid, err := u.messageBroadcast.SendMessage(userID, text)
+			canonical := strings.TrimSpace(fmt.Sprint(payload["strain_canonical"]))
+			textFallback, _ := payload["text"].(string)
+			textFallback = strings.TrimSpace(textFallback)
+			outbound := utils.OutboundMessage{}
+			if canonical != "" && u.strainSubscriptionCard != nil {
+				built, berr := u.strainSubscriptionCard.BuildSubscriptionStrainCard(ctx, userID, canonical)
+				if berr != nil && u.log != nil {
+					u.log.Warn("broadcast strain card rebuild failed broadcast_id=%s chat_id=%d strain=%q err=%v — falling back to payload text", broadcastID, userID, canonical, berr)
+				} else {
+					outbound = built
+				}
+			}
+			if strings.TrimSpace(outbound.Text) == "" {
+				outbound = utils.OutboundMessage{Text: textFallback}
+			}
+			if strings.TrimSpace(outbound.Text) != "" && u.messageBroadcast != nil {
+				mid, err := u.messageBroadcast.SendOutbound(userID, outbound)
 				if err != nil {
 					if u.log != nil {
 						u.log.Error("broadcast message send failed broadcast_id=%s chat_id=%d: %v", broadcastID, userID, err)

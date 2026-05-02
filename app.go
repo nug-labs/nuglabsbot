@@ -22,6 +22,7 @@ import (
 	handleevents "nuglabsbot-v2/use-cases/handle-events"
 	handleinline "nuglabsbot-v2/use-cases/handle-inline"
 	handlemessage "nuglabsbot-v2/use-cases/handle-message"
+	handlestrainpress "nuglabsbot-v2/use-cases/handle-strain-press"
 	handlesubscribe "nuglabsbot-v2/use-cases/handle-subscribe"
 	"nuglabsbot-v2/utils"
 	"nuglabsbot-v2/utils/db"
@@ -90,7 +91,7 @@ func main() {
 	handleInlineUC := handleinline.NewHandleInlineUseCase(nugClient, analytics)
 	handleEmptyUC := handleempty.NewRootUseCase(analytics)
 	handleChatMemberUC := handlechatmember.NewRootUseCase(bot, analytics)
-	handleBroadcastUC := handlebroadcast.NewRootUseCase(database, analytics, broadcastSender, broadcastSender, logger)
+	handleBroadcastUC := handlebroadcast.NewRootUseCase(database, analytics, broadcastSender, broadcastSender, handleStrainUC, logger)
 
 	userMiddleware := middleware.NewHandleUserMiddleware(database, analytics, deferredWrites)
 	messageController := controllers.NewMessageController(handleMessageRootUC)
@@ -104,7 +105,8 @@ func main() {
 	inlineRoute := routes.NewInlineRoute(userMiddleware, inlineController, logger)
 	emptyRoute := routes.NewEmptyRoute(emptyController, logger)
 	chatMemberRoute := routes.NewChatMemberRoute(chatMemberController, logger)
-	updateRouter := routes.NewUpdateRouter(bot, logger, messageRoute, commandRoute, inlineRoute, emptyRoute, chatMemberRoute)
+	strainPressUC := handlestrainpress.NewRootUseCase(database, analytics, logger)
+	updateRouter := routes.NewUpdateRouter(bot, logger, userMiddleware, strainPressUC, messageRoute, commandRoute, inlineRoute, emptyRoute, chatMemberRoute)
 	broadcastService := bgservices.NewHandleBroadcastService(handleBroadcastUC, logger)
 
 	go updateRouter.Run(ctx)
@@ -124,34 +126,19 @@ type telegramBroadcaster struct {
 	bot *tgbotapi.BotAPI
 }
 
-func (t *telegramBroadcaster) SendMessage(chatID int64, text string) (int64, error) {
-	msg, err := t.bot.Send(telegramHTMLMessage(chatID, text))
+func (t *telegramBroadcaster) SendOutbound(chatID int64, msg utils.OutboundMessage) (int64, error) {
+	cfg := tgbotapi.NewMessage(chatID, msg.Text)
+	if utils.LooksLikeTelegramHTML(msg.Text) {
+		cfg.ParseMode = "HTML"
+	}
+	if msg.ReplyMarkup != nil {
+		cfg.ReplyMarkup = msg.ReplyMarkup
+	}
+	sent, err := t.bot.Send(cfg)
 	if err != nil {
 		return 0, err
 	}
-	return int64(msg.MessageID), nil
-}
-
-func telegramHTMLMessage(chatID int64, text string) tgbotapi.MessageConfig {
-	m := tgbotapi.NewMessage(chatID, text)
-	if looksLikeTelegramHTML(text) {
-		m.ParseMode = "HTML"
-	}
-	return m
-}
-
-// looksLikeTelegramHTML enables HTML parse mode for broadcast-style bodies (see assets/broadcasts).
-func looksLikeTelegramHTML(text string) bool {
-	if !strings.Contains(text, "<") || !strings.Contains(text, ">") {
-		return false
-	}
-	// https://core.telegram.org/bots/api#html-style
-	return strings.Contains(text, "<b>") || strings.Contains(text, "<strong>") ||
-		strings.Contains(text, "<i>") || strings.Contains(text, "<em>") ||
-		strings.Contains(text, "<u>") || strings.Contains(text, "<s>") || strings.Contains(text, "<strike>") ||
-		strings.Contains(text, "<code>") || strings.Contains(text, "<pre>") ||
-		strings.Contains(text, "<a ") || strings.Contains(text, "<tg-spoiler>") ||
-		strings.Contains(text, "<blockquote>") || strings.Contains(text, "<br")
+	return int64(sent.MessageID), nil
 }
 
 func (t *telegramBroadcaster) SendQuiz(userID int64, question string, options []string, correctIndex int) (int64, error) {

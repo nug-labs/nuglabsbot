@@ -22,12 +22,12 @@ func NewMessageRoute(middleware *middleware.HandleUserMiddleware, controller *co
 	return &MessageRoute{middleware: middleware, controller: controller, log: log}
 }
 
-func (r *MessageRoute) Handle(ctx context.Context, user middleware.TelegramUser, chatID int64, message string) (string, error) {
+func (r *MessageRoute) Handle(ctx context.Context, user middleware.TelegramUser, chatID int64, message string) (utils.OutboundMessage, error) {
 	if err := r.middleware.EnsureUser(ctx, user, chatID); err != nil {
 		if r.log != nil {
 			r.log.Warn("message route: ensure user failed: %v", err)
 		}
-		return "", err
+		return utils.OutboundMessage{}, err
 	}
 	return r.controller.Handle(ctx, user.TelegramID, chatID, message)
 }

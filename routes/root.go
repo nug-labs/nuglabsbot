@@ -16,37 +16,52 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"nuglabsbot-v2/middleware"
-	"nuglabsbot-v2/use-cases/handle-message"
+	handlemessage "nuglabsbot-v2/use-cases/handle-message"
+	handlestrainpress "nuglabsbot-v2/use-cases/handle-strain-press"
 	"nuglabsbot-v2/utils"
 )
 
 type UpdateRouter struct {
-	bot             *tgbotapi.BotAPI
-	log             *utils.Logger
-	messageRoute    *MessageRoute
-	commandRoute    *CommandRoute
-	inlineRoute     *InlineRoute
-	emptyRoute      *EmptyRoute
-	chatMemberRoute *ChatMemberRoute
+	bot              *tgbotapi.BotAPI
+	log              *utils.Logger
+	userMiddleware   *middleware.HandleUserMiddleware
+	strainPressRoute *strainPressCallbacks
+	messageRoute     *MessageRoute
+	commandRoute     *CommandRoute
+	inlineRoute      *InlineRoute
+	emptyRoute       *EmptyRoute
+	chatMemberRoute  *ChatMemberRoute
+}
+
+type strainPressCallbacks struct {
+	useCase *handlestrainpress.RootUseCase
 }
 
 func NewUpdateRouter(
 	bot *tgbotapi.BotAPI,
 	log *utils.Logger,
+	userMiddleware *middleware.HandleUserMiddleware,
+	strainPress *handlestrainpress.RootUseCase,
 	messageRoute *MessageRoute,
 	commandRoute *CommandRoute,
 	inlineRoute *InlineRoute,
 	emptyRoute *EmptyRoute,
 	chatMemberRoute *ChatMemberRoute,
 ) *UpdateRouter {
+	var sp *strainPressCallbacks
+	if strainPress != nil {
+		sp = &strainPressCallbacks{useCase: strainPress}
+	}
 	return &UpdateRouter{
-		bot:             bot,
-		log:             log,
-		messageRoute:    messageRoute,
-		commandRoute:    commandRoute,
-		inlineRoute:     inlineRoute,
-		emptyRoute:      emptyRoute,
-		chatMemberRoute: chatMemberRoute,
+		bot:              bot,
+		log:              log,
+		userMiddleware:   userMiddleware,
+		strainPressRoute: sp,
+		messageRoute:     messageRoute,
+		commandRoute:     commandRoute,
+		inlineRoute:      inlineRoute,
+		emptyRoute:       emptyRoute,
+		chatMemberRoute:  chatMemberRoute,
 	}
 }
 
@@ -63,7 +78,7 @@ func (r *UpdateRouter) Run(ctx context.Context) {
 	// Telegram: default getUpdates does not include chat_member (see Bot API "allowed_updates").
 	// Member leave/kick is often only delivered as ChatMember, not as Message.left_chat_member.
 	// The bot must be an administrator in the group/supergroup to receive chat_member updates.
-	u.AllowedUpdates = []string{"message", "inline_query", "chat_member"}
+	u.AllowedUpdates = []string{"message", "inline_query", "callback_query", "chat_member"}
 	updates := r.bot.GetUpdatesChan(u)
 	defer r.bot.StopReceivingUpdates()
 
@@ -112,11 +127,10 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 			if err != nil {
 				return err
 			}
-			if strings.TrimSpace(reply) == "" {
+			if strings.TrimSpace(reply.Text) == "" {
 				return nil
 			}
-			_, err = r.bot.Send(newHTMLMessageIfNeeded(update.Message.Chat.ID, reply))
-			return err
+			return sendChatOutbound(r.bot, update.Message.Chat.ID, reply)
 		}
 		// Joins, member updates, pins, and many "settings" events send a Message with no Text/Caption.
 		// Without this, empty input hits strain → "Please provide a strain name." in groups.
@@ -130,8 +144,7 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 				return err
 			}
 			if strings.TrimSpace(reply) != "" {
-				_, err = r.bot.Send(newHTMLMessageIfNeeded(update.Message.Chat.ID, reply))
-				return err
+				return sendChatOutbound(r.bot, update.Message.Chat.ID, utils.OutboundMessage{Text: reply})
 			}
 			// Member service messages are fully handled in chat-member flow; skip empty tracker to avoid duplicate events.
 			if len(update.Message.NewChatMembers) > 0 || update.Message.LeftChatMember != nil {
@@ -144,18 +157,53 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 			if strings.TrimSpace(reply) == "" {
 				return nil
 			}
-			_, err = r.bot.Send(newHTMLMessageIfNeeded(update.Message.Chat.ID, reply))
-			return err
+			return sendChatOutbound(r.bot, update.Message.Chat.ID, utils.OutboundMessage{Text: reply})
 		}
 		reply, err := r.messageRoute.Handle(ctx, user, update.Message.Chat.ID, body)
 		if err != nil {
 			return err
 		}
-		if strings.TrimSpace(reply) == "" {
+		if strings.TrimSpace(reply.Text) == "" {
 			return nil
 		}
-		_, err = r.bot.Send(newHTMLMessageIfNeeded(update.Message.Chat.ID, reply))
-		return err
+		return sendChatOutbound(r.bot, update.Message.Chat.ID, reply)
+	}
+
+	if update.CallbackQuery != nil && r.strainPressRoute != nil && r.strainPressRoute.useCase != nil {
+		cq := update.CallbackQuery
+		if !strings.HasPrefix(strings.TrimSpace(cq.Data), handlestrainpress.CallbackDataPrefix) {
+			return nil
+		}
+		if cq.From == nil || cq.Message == nil {
+			return nil
+		}
+		mu := middleware.TelegramUser{
+			TelegramID: cq.From.ID,
+			Username:   cq.From.UserName,
+			FirstName:  cq.From.FirstName,
+			LastName:   cq.From.LastName,
+		}
+		if r.userMiddleware != nil {
+			if err := r.userMiddleware.EnsureUser(ctx, mu, cq.Message.Chat.ID); err != nil {
+				if r.log != nil {
+					r.log.Warn("callback route: ensure user failed: %v", err)
+				}
+				return err
+			}
+		}
+		ans, alert := r.strainPressRoute.useCase.Handle(ctx, cq)
+		cbCfg := tgbotapi.CallbackConfig{
+			CallbackQueryID: cq.ID,
+			Text:            ans,
+			ShowAlert:       alert,
+		}
+		if _, err := r.bot.Request(cbCfg); err != nil {
+			if r.log != nil {
+				r.log.Warn("callback answer failed callback_id=%s: %v", cq.ID, err)
+			}
+			return err
+		}
+		return nil
 	}
 
 	if update.InlineQuery != nil {
@@ -219,12 +267,16 @@ func getUpdatesTimeoutSeconds() int {
 	return n
 }
 
-func newHTMLMessageIfNeeded(chatID int64, text string) tgbotapi.MessageConfig {
-	m := tgbotapi.NewMessage(chatID, text)
-	if strings.Contains(text, "<b>") || strings.Contains(text, "<a ") {
-		m.ParseMode = "HTML"
+func sendChatOutbound(bot *tgbotapi.BotAPI, chatID int64, msg utils.OutboundMessage) error {
+	cfg := tgbotapi.NewMessage(chatID, msg.Text)
+	if utils.LooksLikeTelegramHTML(msg.Text) {
+		cfg.ParseMode = "HTML"
 	}
-	return m
+	if msg.ReplyMarkup != nil {
+		cfg.ReplyMarkup = msg.ReplyMarkup
+	}
+	_, err := bot.Send(cfg)
+	return err
 }
 
 func updateKind(update tgbotapi.Update) string {
@@ -236,6 +288,9 @@ func updateKind(update tgbotapi.Update) string {
 	}
 	if update.InlineQuery != nil {
 		return "inline"
+	}
+	if update.CallbackQuery != nil {
+		return "callback_query"
 	}
 	if update.ChatMember != nil {
 		return "chat_member"

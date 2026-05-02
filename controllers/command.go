@@ -13,7 +13,7 @@ import (
 )
 
 type StrainHandler interface {
-	Handle(ctx context.Context, actorUserID, chatID int64, input string) (string, error)
+	Handle(ctx context.Context, actorUserID, chatID int64, input string) (utils.OutboundMessage, error)
 }
 
 type PolicyHandler interface {
@@ -40,7 +40,7 @@ func NewCommandController(strainHandler StrainHandler, policyHandler PolicyHandl
 	}
 }
 
-func (c *CommandController) Handle(ctx context.Context, actorUserID, chatID int64, command string, argument string) (string, error) {
+func (c *CommandController) Handle(ctx context.Context, actorUserID, chatID int64, command string, argument string) (utils.OutboundMessage, error) {
 	cmd := strings.ToLower(strings.TrimSpace(strings.TrimPrefix(command, "/")))
 	arg := strings.TrimSpace(argument)
 
@@ -63,20 +63,27 @@ func (c *CommandController) Handle(ctx context.Context, actorUserID, chatID int6
 			return c.strainHandler.Handle(ctx, actorUserID, chatID, normalized)
 		}
 		if chatID < 0 {
-			return "", nil
+			return utils.OutboundMessage{}, nil
 		}
-		return c.policyHandler.Handle(ctx, actorUserID, chatID, "start")
+		s, err := c.policyHandler.Handle(ctx, actorUserID, chatID, "start")
+		return utils.OutboundMessage{Text: s}, err
 	case "subscribe":
-		return c.subscribeHandler.Handle(ctx, chatID)
+		s, err := c.subscribeHandler.Handle(ctx, chatID)
+		return utils.OutboundMessage{Text: s}, err
 	case "help":
-		return c.policyHandler.Handle(ctx, actorUserID, chatID, "help")
+		s, err := c.policyHandler.Handle(ctx, actorUserID, chatID, "help")
+		return utils.OutboundMessage{Text: s}, err
 	case "about":
-		return c.policyHandler.Handle(ctx, actorUserID, chatID, "about")
+		s, err := c.policyHandler.Handle(ctx, actorUserID, chatID, "about")
+		return utils.OutboundMessage{Text: s}, err
 	case "legal":
-		return c.policyHandler.Handle(ctx, actorUserID, chatID, "legal")
+		s, err := c.policyHandler.Handle(ctx, actorUserID, chatID, "legal")
+		return utils.OutboundMessage{Text: s}, err
 	case "links":
-		return c.policyHandler.Handle(ctx, actorUserID, chatID, "links")
+		s, err := c.policyHandler.Handle(ctx, actorUserID, chatID, "links")
+		return utils.OutboundMessage{Text: s}, err
 	default:
-		return c.policyHandler.Handle(ctx, actorUserID, chatID, "help")
+		s, err := c.policyHandler.Handle(ctx, actorUserID, chatID, "help")
+		return utils.OutboundMessage{Text: s}, err
 	}
 }

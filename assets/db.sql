@@ -92,3 +92,22 @@ CREATE INDEX IF NOT EXISTS idx_users_last_seen_at ON users(last_seen_at);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_enabled ON subscriptions(enabled, telegram_id);
 CREATE INDEX IF NOT EXISTS idx_broadcast_outgoing_pending ON broadcast_outgoing(sent_time, scheduled_at, broadcast_id);
 CREATE INDEX IF NOT EXISTS idx_app_analytics_event_at ON app_analytics(event_at);
+
+-- Per-user confirmations that they "found" a canonical strain (collection); used for Encountered counts and analytics.
+CREATE TABLE IF NOT EXISTS strain_collection_encounters (
+  id BIGSERIAL PRIMARY KEY,
+  telegram_user_id BIGINT NOT NULL,
+  strain_canonical TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_strain_coll_user_strain ON strain_collection_encounters(telegram_user_id, strain_canonical);
+
+-- One-time callback tokens mapping to strain_canonical for "Press here if found" buttons (avoid 64-byte callback_data limit).
+CREATE TABLE IF NOT EXISTS strain_press_tokens (
+  id BIGSERIAL PRIMARY KEY,
+  strain_canonical TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_strain_press_tokens_created ON strain_press_tokens(created_at);

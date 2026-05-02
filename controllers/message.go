@@ -7,10 +7,13 @@
 
 package controllers
 
-import "context"
+import (
+	"context"
+	"nuglabsbot-v2/utils"
+)
 
 type MessageHandler interface {
-	Handle(ctx context.Context, actorUserID, chatID int64, input string) (string, error)
+	Handle(ctx context.Context, actorUserID, chatID int64, input string) (utils.OutboundMessage, error)
 }
 
 type MessageController struct {
@@ -21,6 +24,6 @@ func NewMessageController(handler MessageHandler) *MessageController {
 	return &MessageController{handler: handler}
 }
 
-func (c *MessageController) Handle(ctx context.Context, actorUserID, chatID int64, input string) (string, error) {
+func (c *MessageController) Handle(ctx context.Context, actorUserID, chatID int64, input string) (utils.OutboundMessage, error) {
 	return c.handler.Handle(ctx, actorUserID, chatID, input)
 }

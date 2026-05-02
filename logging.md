@@ -12,8 +12,8 @@ For new process telemetry, log lines use a structured pattern:
 
 ### `event=update-handle`
 
-- **Source:** `routes/update.go`
-- **When:** Each update processed (`message`, `command`, `inline`, `other`)
+- **Source:** `routes/root.go` (`UpdateRouter.HandleUpdate`)
+- **When:** Each update processed (`message`, `command`, `inline`, **`callback_query`**, **`chat_member`**, `other`).
 - **Fields:** `kind`, `status`, `duration_ms` (+ `err` when error)
 
 ### `event=deferred-write`
@@ -45,6 +45,14 @@ For new process telemetry, log lines use a structured pattern:
 - **Source:** `use-cases/handle-broadcast/root.go`
 - **When:** One scheduler pass completes
 - **Fields:** `status` (`ok`/`slow`), `duration_ms`, `processed`, `sent`, `aborted`
+
+### `event=strain-collection-press`
+
+- **Source:** `use-cases/handle-strain-press/root.go` (invoked from `routes/root.go` on **`scf:`** `callback_query` presses).
+- **When:** Confirmation attempts complete.
+- **`status`:** **`ok`** (insert + count), **`miss`** (no token row / duplicate consume), **`invalid`** (malformed **`scf:`** payload), **`error`** (DB / scan failure apart from **`miss`**).
+- **Typical structured fields:** `user_id`, `strain` (canonical), `encounter_cnt` (logged on **`ok`**), **`token_id`**, **`phase`** (logging inside **`handle-strain`** on token insert/count warnings).
+- **Note:** On success there is **no** extra **`SendMessage`** (congrats/community); only **`AnswerCallbackQuery`** toasts the copy from **`assets/strain_collection.yml`** (`callback_recorded` / `callback_expired`).
 
 ## Existing warning/error logs kept
 

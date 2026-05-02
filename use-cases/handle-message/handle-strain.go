@@ -4,7 +4,6 @@ package handlemessage
 
 import (
 	"context"
-	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -12,14 +11,19 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	handlestrainpress "nuglabsbot-v2/use-cases/handle-strain-press"
 	"nuglabsbot-v2/utils"
 	"nuglabsbot-v2/utils/db"
-	"time"
 )
 
 const enabledSubscriptionsReadCacheTTL = 0
 const broadcastByPayloadReadCacheTTL = 0
+const strainEncounterReadCacheTTL = 0
 
 type strainClient interface {
 	GetStrain(ctx context.Context, name string) (map[string]any, error)
@@ -38,18 +42,18 @@ func NewHandleStrainUseCase(nuglabsClient any, analytics *utils.Analytics, store
 	return &HandleStrainUseCase{nuglabsClient: nuglabsClient, analytics: analytics, store: store, deferred: deferred, logger: logger}
 }
 
-func (u *HandleStrainUseCase) Handle(ctx context.Context, actorUserID, chatID int64, input string) (string, error) {
+func (u *HandleStrainUseCase) Handle(ctx context.Context, actorUserID, chatID int64, input string) (utils.OutboundMessage, error) {
 	client, ok := u.nuglabsClient.(strainClient)
 	if !ok {
-		return "Strain search is unavailable right now.", nil
+		return utils.OutboundMessage{Text: "Strain search is unavailable right now."}, nil
 	}
 
 	query := strings.TrimSpace(input)
 	if query == "" {
 		if chatID >= 0 {
-			return "Please provide a strain name.", nil
+			return utils.OutboundMessage{Text: "Please provide a strain name."}, nil
 		}
-		return "", nil
+		return utils.OutboundMessage{}, nil
 	}
 
 	strain, err := client.GetStrain(ctx, query)
@@ -57,11 +61,14 @@ func (u *HandleStrainUseCase) Handle(ctx context.Context, actorUserID, chatID in
 		if u.logger != nil {
 			u.logger.Error("strain get failed for %q: %v", query, err)
 		}
-		return "Strain search is temporarily unavailable.", nil
+		return utils.OutboundMessage{Text: "Strain search is temporarily unavailable."}, nil
 	}
 	if strain != nil {
-		msg := formatStrain(strain)
-		if err := u.queueStrainSubscriptionBroadcasts(ctx, msg, anyToString(strain["name"]), query); err != nil && u.logger != nil {
+		out, err := u.fullStrainOutbound(ctx, actorUserID, strain)
+		if err != nil {
+			return utils.OutboundMessage{}, err
+		}
+		if err := u.queueStrainSubscriptionBroadcasts(ctx, anyToString(strain["name"]), query); err != nil && u.logger != nil {
 			u.logger.Error("enqueue subscription broadcasts failed: %v", err)
 		}
 		_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
@@ -70,7 +77,7 @@ func (u *HandleStrainUseCase) Handle(ctx context.Context, actorUserID, chatID in
 			Status: "ok",
 			Meta:   utils.MetaWithChatID(chatID, map[string]any{"query": query, "via": "exact"}),
 		})
-		return msg, nil
+		return out, nil
 	}
 
 	hits, err := client.SearchStrains(ctx, query)
@@ -78,7 +85,7 @@ func (u *HandleStrainUseCase) Handle(ctx context.Context, actorUserID, chatID in
 		if u.logger != nil {
 			u.logger.Error("strain search failed for %q: %v", query, err)
 		}
-		return "Strain search is temporarily unavailable.", nil
+		return utils.OutboundMessage{Text: "Strain search is temporarily unavailable."}, nil
 	}
 	if len(hits) == 0 {
 		_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
@@ -87,17 +94,19 @@ func (u *HandleStrainUseCase) Handle(ctx context.Context, actorUserID, chatID in
 			Status: "miss",
 			Meta:   utils.MetaWithChatID(chatID, map[string]any{"query": query}),
 		})
-		return "No matching strain found.", nil
+		return utils.OutboundMessage{Text: "No matching strain found."}, nil
 	}
 
-	// Single search hit: same path as exact match (full card + subscription broadcast queue).
 	if len(hits) == 1 {
 		oneName := anyToString(hits[0]["name"])
 		if oneName != "" {
 			full, err := client.GetStrain(ctx, oneName)
 			if err == nil && full != nil {
-				msg := formatStrain(full)
-				if err := u.queueStrainSubscriptionBroadcasts(ctx, msg, anyToString(full["name"]), query); err != nil && u.logger != nil {
+				out, err := u.fullStrainOutbound(ctx, actorUserID, full)
+				if err != nil {
+					return utils.OutboundMessage{}, err
+				}
+				if err := u.queueStrainSubscriptionBroadcasts(ctx, anyToString(full["name"]), query); err != nil && u.logger != nil {
 					u.logger.Error("enqueue subscription broadcasts failed: %v", err)
 				}
 				_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
@@ -106,20 +115,18 @@ func (u *HandleStrainUseCase) Handle(ctx context.Context, actorUserID, chatID in
 					Status: "ok",
 					Meta:   utils.MetaWithChatID(chatID, map[string]any{"query": query, "via": "search", "resolved": oneName}),
 				})
-				return msg, nil
+				return out, nil
 			}
 		}
 	}
 
 	if len(hits) > 1 {
 		orig := len(hits)
-		// Fan-out uses the same top match as the card list: subscribers get the resolved first hit.
 		firstName := anyToString(hits[0]["name"])
 		if firstName != "" {
 			full, gerr := client.GetStrain(ctx, firstName)
 			if gerr == nil && full != nil {
-				msg := formatStrain(full)
-				if err := u.queueStrainSubscriptionBroadcasts(ctx, msg, anyToString(full["name"]), query); err != nil && u.logger != nil {
+				if err := u.queueStrainSubscriptionBroadcasts(ctx, anyToString(full["name"]), query); err != nil && u.logger != nil {
 					u.logger.Error("enqueue subscription broadcasts failed: %v", err)
 				}
 				_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
@@ -134,7 +141,82 @@ func (u *HandleStrainUseCase) Handle(ctx context.Context, actorUserID, chatID in
 		}
 		hits = hits[:2]
 	}
-	return formatTopMatchesHTML(hits), nil
+	return utils.OutboundMessage{Text: formatTopMatchesHTML(hits)}, nil
+}
+
+// BuildSubscriptionStrainCard rebuilds a full card (per-recipient encounter counts + press button) for subscription broadcast delivery.
+func (u *HandleStrainUseCase) BuildSubscriptionStrainCard(ctx context.Context, recipientTelegramID int64, strainCanonical string) (utils.OutboundMessage, error) {
+	client, ok := u.nuglabsClient.(strainClient)
+	if !ok {
+		return utils.OutboundMessage{}, fmt.Errorf("strain client unavailable")
+	}
+	name := strings.TrimSpace(strainCanonical)
+	if name == "" {
+		return utils.OutboundMessage{}, fmt.Errorf("empty strain")
+	}
+	full, err := client.GetStrain(ctx, name)
+	if err != nil || full == nil {
+		return utils.OutboundMessage{}, err
+	}
+	return u.fullStrainOutbound(ctx, recipientTelegramID, full)
+}
+
+func (u *HandleStrainUseCase) fullStrainOutbound(ctx context.Context, viewerTelegramID int64, strain map[string]any) (utils.OutboundMessage, error) {
+	canon := strings.TrimSpace(anyToString(strain["name"]))
+	if canon == "" {
+		return utils.OutboundMessage{Text: formatStrain(strain)}, nil
+	}
+	lineFmt := utils.StrainCollectionMessages().EncounterLine
+	var n int64
+	if u.store != nil && viewerTelegramID != 0 {
+		var err error
+		n, err = u.countStrainEncounters(ctx, viewerTelegramID, canon)
+		if err != nil && u.logger != nil {
+			u.logger.Warn("strain encounter count failed user_id=%d strain=%q: %v", viewerTelegramID, canon, err)
+		}
+	}
+	html := FormatStrainHTMLWithEncounter(strain, n, lineFmt)
+	if u.store == nil {
+		return utils.OutboundMessage{Text: html}, nil
+	}
+	tokenID, err := u.insertStrainPressToken(ctx, canon)
+	if err != nil {
+		if u.logger != nil {
+			u.logger.Warn("strain press token insert failed strain=%q: %v", canon, err)
+		}
+		return utils.OutboundMessage{Text: html}, nil
+	}
+	cb := handlestrainpress.CallbackDataPrefix + strconv.FormatInt(tokenID, 36)
+	copy := utils.StrainCollectionMessages()
+	kb := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(copy.PressIfFound, cb),
+		),
+	)
+	return utils.OutboundMessage{Text: html, ReplyMarkup: &kb}, nil
+}
+
+func (u *HandleStrainUseCase) countStrainEncounters(ctx context.Context, telegramUserID int64, strainCanonical string) (int64, error) {
+	var n int64
+	err := u.store.QueryRowContext(
+		ctx,
+		`SELECT COUNT(*)::bigint FROM strain_collection_encounters WHERE telegram_user_id = $1 AND strain_canonical = $2`,
+		strainEncounterReadCacheTTL,
+		telegramUserID,
+		strainCanonical,
+	).Scan(&n)
+	return n, err
+}
+
+func (u *HandleStrainUseCase) insertStrainPressToken(ctx context.Context, strainCanonical string) (int64, error) {
+	var id int64
+	err := u.store.QueryRowContext(
+		ctx,
+		`INSERT INTO strain_press_tokens (strain_canonical) VALUES ($1) RETURNING id`,
+		strainEncounterReadCacheTTL,
+		strainCanonical,
+	).Scan(&id)
+	return id, err
 }
 
 func formatStrain(strain map[string]any) string {
@@ -148,18 +230,53 @@ func formatStrain(strain map[string]any) string {
 
 // FormatStrainHTML returns Telegram HTML for a strain card (bold labels). Empty fields are omitted.
 func FormatStrainHTML(strain map[string]any) string {
+	return FormatStrainHTMLWithEncounter(strain, 0, "")
+}
+
+func formatEncounterCountTailHTML(count int64, encounterLineFmt string) string {
+	if count <= 0 || strings.TrimSpace(encounterLineFmt) == "" {
+		return ""
+	}
+	tail := strings.TrimSpace(fmt.Sprintf(encounterLineFmt, count))
+	tail = strings.TrimPrefix(tail, "Encountered:")
+	tail = strings.TrimSpace(tail)
+	if tail == "" {
+		return ""
+	}
+	return "<b>Encountered:</b> " + html.EscapeString(tail)
+}
+
+// FormatStrainHTMLWithEncounter appends one per-user encounter line after Name/AKA (blank line before it) when encounterCount > 0.
+func FormatStrainHTMLWithEncounter(strain map[string]any, encounterCount int64, encounterLineFmt string) string {
 	esc := html.EscapeString
+	if encounterLineFmt == "" {
+		encounterLineFmt = utils.StrainCollectionMessages().EncounterLine
+	}
+
 	var blocks []string
 
 	var idLines []string
-	if s := esc(anyToString(strain["name"])); s != "" {
-		idLines = append(idLines, "<b>Name:</b> "+s)
+	name := esc(anyToString(strain["name"]))
+	akaPlain := joinListPlain(strain["akas"])
+	var akaLine string
+	if akaPlain != "" {
+		akaLine = "<b>AKA:</b> " + esc(akaPlain)
 	}
-	if akas := joinListPlain(strain["akas"]); akas != "" {
-		idLines = append(idLines, "<b>AKA:</b> "+esc(akas))
+
+	if akaLine != "" {
+		if name != "" {
+			idLines = append(idLines, "<b>Name:</b> "+name)
+		}
+		idLines = append(idLines, akaLine)
+	} else if name != "" {
+		idLines = append(idLines, "<b>Name:</b> "+name)
 	}
 	if len(idLines) > 0 {
-		blocks = append(blocks, strings.Join(idLines, "\n"))
+		identityBlock := strings.Join(idLines, "\n")
+		if tail := formatEncounterCountTailHTML(encounterCount, encounterLineFmt); tail != "" {
+			identityBlock += "\n\n" + tail
+		}
+		blocks = append(blocks, identityBlock)
 	}
 
 	var typeLines []string
@@ -372,25 +489,23 @@ func anyToString(v any) string {
 // subscriptionMessagePayload must use a struct (not map) so json.Marshal order is stable; map iteration
 // breaks broadcasts.payload equality dedupe and causes a new broadcast row on every lookup on live workers.
 type subscriptionMessagePayload struct {
-	Text      string `json:"text"`
-	StrainKey string `json:"strain_key"`
+	StrainCanonical string `json:"strain_canonical,omitempty"`
+	StrainKey       string `json:"strain_key"`
+	Text            string `json:"text,omitempty"`
 }
 
 func normalizeStrainKey(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
 }
 
-// fanoutStrainKey must be stable for the same strain across lookups: prefer resolved name, then user query,
-// then content hash (last resort only — HTML can drift).
-func fanoutStrainKey(strainName, searchQuery, message string) string {
+func fanoutStrainKey(strainName, searchQuery string) string {
 	if k := normalizeStrainKey(strainName); k != "" {
 		return k
 	}
 	if k := normalizeStrainKey(searchQuery); k != "" {
 		return k
 	}
-	sum := sha256.Sum256([]byte(message))
-	return fmt.Sprintf("h%x", sum[:8])
+	return "unknown"
 }
 
 // queueStrainSubscriptionBroadcasts is the strain-search → broadcast pipeline:
@@ -399,14 +514,14 @@ func fanoutStrainKey(strainName, searchQuery, message string) string {
 // 3) bg-services/handle-broadcast sends rows with sent_time IS NULL.
 //
 // DB work runs on DeferredWriteQueue when configured so strain lookup can return before Supabase fan-out finishes.
-func (u *HandleStrainUseCase) queueStrainSubscriptionBroadcasts(ctx context.Context, message, strainName, searchQuery string) error {
-	if u.store == nil || strings.TrimSpace(message) == "" {
+func (u *HandleStrainUseCase) queueStrainSubscriptionBroadcasts(ctx context.Context, strainName, searchQuery string) error {
+	if u.store == nil || strings.TrimSpace(strainName) == "" {
 		return nil
 	}
 	if u.deferred != nil {
-		msg, sn, sq := message, strainName, searchQuery
+		sn, sq := strainName, searchQuery
 		enqErr := u.deferred.Enqueue(func(c context.Context, conn db.DB) error {
-			return u.queueStrainSubscriptionBroadcastsWithStore(c, conn, msg, sn, sq)
+			return u.queueStrainSubscriptionBroadcastsWithStore(c, conn, sn, sq)
 		})
 		if enqErr == nil {
 			return nil
@@ -415,11 +530,11 @@ func (u *HandleStrainUseCase) queueStrainSubscriptionBroadcasts(ctx context.Cont
 			u.logger.Warn("strain broadcast deferred queue full, running sync: %v", enqErr)
 		}
 	}
-	return u.queueStrainSubscriptionBroadcastsWithStore(ctx, u.store, message, strainName, searchQuery)
+	return u.queueStrainSubscriptionBroadcastsWithStore(ctx, u.store, strainName, searchQuery)
 }
 
-func (u *HandleStrainUseCase) queueStrainSubscriptionBroadcastsWithStore(ctx context.Context, conn db.DB, message, strainName, searchQuery string) error {
-	key := fanoutStrainKey(strainName, searchQuery, message)
+func (u *HandleStrainUseCase) queueStrainSubscriptionBroadcastsWithStore(ctx context.Context, conn db.DB, strainName, searchQuery string) error {
+	key := fanoutStrainKey(strainName, searchQuery)
 
 	rows, err := conn.QueryContext(
 		ctx,
@@ -443,7 +558,10 @@ func (u *HandleStrainUseCase) queueStrainSubscriptionBroadcastsWithStore(ctx con
 		}
 		idx++
 
-		payloadRaw, err := json.Marshal(subscriptionMessagePayload{Text: message, StrainKey: key})
+		payloadRaw, err := json.Marshal(subscriptionMessagePayload{
+			StrainCanonical: strings.TrimSpace(strainName),
+			StrainKey:       key,
+		})
 		if err != nil {
 			return err
 		}
