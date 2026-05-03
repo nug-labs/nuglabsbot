@@ -1,30 +1,73 @@
 {
+  "__elements": {},
   "__inputs": [
     {
-      "name": "DS_NUGLABS_PGQL",
-      "label": "NugLabs pgql",
       "description": "",
-      "type": "datasource",
+      "label": "NugLabs pgql",
+      "name": "DS_NUGLABS_PGQL",
       "pluginId": "grafana-postgresql-datasource",
-      "pluginName": "PostgreSQL"
+      "pluginName": "PostgreSQL",
+      "type": "datasource"
     }
   ],
-  "__elements": {},
   "__requires": [
-    { "type": "panel", "id": "barchart", "name": "Bar chart", "version": "" },
-    { "type": "panel", "id": "gauge", "name": "Gauge", "version": "" },
-    { "type": "panel", "id": "piechart", "name": "Pie chart", "version": "" },
-    { "type": "panel", "id": "stat", "name": "Stat", "version": "" },
-    { "type": "panel", "id": "table", "name": "Table", "version": "" },
-    { "type": "panel", "id": "timeseries", "name": "Time series", "version": "" },
-    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.3.3" },
-    { "type": "datasource", "id": "grafana-postgresql-datasource", "name": "PostgreSQL", "version": "1.0.0" }
+    {
+      "id": "barchart",
+      "name": "Bar chart",
+      "type": "panel",
+      "version": ""
+    },
+    {
+      "id": "gauge",
+      "name": "Gauge",
+      "type": "panel",
+      "version": ""
+    },
+    {
+      "id": "piechart",
+      "name": "Pie chart",
+      "type": "panel",
+      "version": ""
+    },
+    {
+      "id": "stat",
+      "name": "Stat",
+      "type": "panel",
+      "version": ""
+    },
+    {
+      "id": "table",
+      "name": "Table",
+      "type": "panel",
+      "version": ""
+    },
+    {
+      "id": "timeseries",
+      "name": "Time series",
+      "type": "panel",
+      "version": ""
+    },
+    {
+      "id": "grafana",
+      "name": "Grafana",
+      "type": "grafana",
+      "version": "10.3.3"
+    },
+    {
+      "id": "grafana-postgresql-datasource",
+      "name": "PostgreSQL",
+      "type": "datasource",
+      "version": "1.0.0"
+    }
   ],
   "annotations": {
     "list": [
       {
         "builtIn": 1,
-        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
@@ -41,14 +84,64 @@
   "liveNow": false,
   "panels": [
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } }, "mappings": [], "unitScale": true }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 4, "x": 0, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
       "id": 12,
-      "options": { "displayLabels": ["percent"], "legend": { "calcs": [], "displayMode": "hidden", "placement": "right", "showLegend": false, "values": [] }, "pieType": "pie", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "options": {
+        "displayLabels": [
+          "percent"
+        ],
+        "legend": {
+          "calcs": [],
+          "displayMode": "hidden",
+          "placement": "right",
+          "showLegend": false,
+          "values": []
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -60,14 +153,64 @@
       "type": "piechart"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } }, "mappings": [], "unitScale": true }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 4, "x": 4, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
       "id": 14,
-      "options": { "displayLabels": ["percent"], "legend": { "calcs": [], "displayMode": "hidden", "placement": "right", "showLegend": false, "values": [] }, "pieType": "pie", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "options": {
+        "displayLabels": [
+          "percent"
+        ],
+        "legend": {
+          "calcs": [],
+          "displayMode": "hidden",
+          "placement": "right",
+          "showLegend": false,
+          "values": []
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -79,14 +222,64 @@
       "type": "piechart"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } }, "mappings": [], "unitScale": true }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 4, "x": 8, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
       "id": 13,
-      "options": { "displayLabels": ["percent"], "legend": { "calcs": [], "displayMode": "hidden", "placement": "right", "showLegend": false, "values": [] }, "pieType": "pie", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "options": {
+        "displayLabels": [
+          "percent"
+        ],
+        "legend": {
+          "calcs": [],
+          "displayMode": "hidden",
+          "placement": "right",
+          "showLegend": false,
+          "values": []
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -98,14 +291,60 @@
       "type": "piechart"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unitScale": true }, "overrides": [] },
-      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
       "id": 1,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.3",
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -117,14 +356,60 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unitScale": true }, "overrides": [] },
-      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
       "id": 2,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.3",
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -136,14 +421,63 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "mappings": [], "thresholds": { "mode": "percentage", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 70 }, { "color": "dark-green", "value": 80 }] }, "unitScale": true }, "overrides": [] },
-      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "dark-green",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
       "id": 3,
-      "options": { "minVizHeight": 75, "minVizWidth": 75, "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true, "sizing": "auto" },
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
+      },
+      "pluginVersion": "10.3.3",
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -155,33 +489,90 @@
       "type": "gauge"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 80 }] }, "unitScale": true }, "overrides": [] },
-      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 12 },
-      "id": 6,
-      "options": { "cellHeight": "sm", "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "last_seen" }] },
-      "targets": [
-        {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "WITH misses AS (SELECT COALESCE(query, strain_name, 'unknown') AS query, at AS ts, from_id::bigint AS uid, COALESCE(username, 'id:' || from_id::text) AS uname FROM analytics_events WHERE $__timeFilter(at) AND event_name = 'bot_strain_not_found' UNION ALL SELECT COALESCE(meta->>'query', meta->>'name', meta->>'key', 'unknown') AS query, event_at AS ts, user_id AS uid, COALESCE(u.username, 'id:' || a.user_id::text) AS uname FROM app_analytics a LEFT JOIN users u ON u.telegram_id = a.user_id WHERE $__timeFilter(a.event_at) AND a.event_name = 'strain-not-found') SELECT query, COUNT(*) AS attempts, MAX(ts) AS last_seen, STRING_AGG(uname, ', ' ORDER BY ts DESC, uname ASC) AS users FROM misses GROUP BY query ORDER BY last_seen DESC, attempts DESC, query ASC LIMIT 50;",
-          "refId": "A"
-        }
-      ],
-      "title": "Failed strain search DLQ",
-      "type": "table"
-    },
-    {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
       "id": 109,
-      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
@@ -193,33 +584,373 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unitScale": true }, "overrides": [] },
-      "gridPos": { "h": 4, "w": 3, "x": 0, "y": 8 },
-      "id": 7,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 111,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH activity AS (\n  SELECT from_id::bigint AS uid, at AS ts\n  FROM analytics_events\n  WHERE event_name IN ('bot_text_query','bot_paste_link','bot_strain_found','bot_strain_not_found')\n    AND from_id IS NOT NULL\n\n  UNION ALL\n\n  SELECT user_id AS uid, event_at AS ts\n  FROM app_analytics\n  WHERE event_name IN ('unknown-response','url-processed','strain-found','strain-not-found')\n    AND user_id IS NOT NULL\n),\n\nfirst_seen AS (\n  SELECT\n    uid,\n    MIN(ts) AS first_seen_at\n  FROM activity\n  GROUP BY uid\n),\n\ndaily_new AS (\n  SELECT\n    DATE(first_seen_at) AS day,\n    COUNT(*) AS new_users\n  FROM first_seen\n  GROUP BY DATE(first_seen_at)\n),\n\ncumulative AS (\n  SELECT\n    day,\n    SUM(new_users) OVER (ORDER BY day) AS total_users\n  FROM daily_new\n)\n\nSELECT *\nFROM cumulative\nWHERE day <= $__timeTo()\n  AND day >= $__timeFrom()\nORDER BY day;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "User growth",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "query"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 812
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "id": 6,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "last_seen"
+          }
+        ]
+      },
+      "pluginVersion": "10.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH misses AS (SELECT COALESCE(query, strain_name, 'unknown') AS query, at AS ts, from_id::bigint AS uid, COALESCE(username, 'id:' || from_id::text) AS uname FROM analytics_events WHERE $__timeFilter(at) AND event_name = 'bot_strain_not_found' UNION ALL SELECT COALESCE(meta->>'query', meta->>'name', meta->>'key', 'unknown') AS query, event_at AS ts, user_id AS uid, COALESCE(u.username, 'id:' || a.user_id::text) AS uname FROM app_analytics a LEFT JOIN users u ON u.telegram_id = a.user_id WHERE $__timeFilter(a.event_at) AND a.event_name = 'strain-not-found') SELECT query, COUNT(*) AS attempts, MAX(ts) AS last_seen, STRING_AGG(uname, ', ' ORDER BY ts DESC, uname ASC) AS users FROM misses GROUP BY query ORDER BY last_seen DESC, attempts DESC, query ASC;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Failed strain search DLQ",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "query",
+                "attempts",
+                "last_seen",
+                "users"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 0,
+        "y": 16
+      },
+      "id": 7,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT COUNT(DISTINCT uid) AS unique_users FROM (SELECT from_id::bigint AS uid FROM analytics_events WHERE $__timeFilter(at) AND event_name IN ('bot_text_query','bot_paste_link','bot_strain_found','bot_strain_not_found') AND from_id IS NOT NULL UNION SELECT user_id AS uid FROM app_analytics WHERE $__timeFilter(event_at) AND event_name IN ('unknown-response','url-processed','strain-found','strain-not-found') AND user_id IS NOT NULL) u;",
-          "refId": "A"
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
         }
       ],
       "title": "Unique users",
       "type": "stat"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unitScale": true }, "overrides": [] },
-      "gridPos": { "h": 4, "w": 3, "x": 3, "y": 8 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 3,
+        "y": 16
+      },
       "id": 11,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.3",
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -231,14 +962,60 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unitScale": true }, "overrides": [] },
-      "gridPos": { "h": 4, "w": 3, "x": 6, "y": 8 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 6,
+        "y": 16
+      },
       "id": 10,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.3",
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -250,14 +1027,60 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unitScale": true }, "overrides": [] },
-      "gridPos": { "h": 4, "w": 3, "x": 9, "y": 8 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 9,
+        "y": 16
+      },
       "id": 9,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.3",
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -269,33 +1092,88 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "bars", "fillOpacity": 100, "gradientMode": "hue", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "normal" }, "thresholdsStyle": { "mode": "off" } }, "mappings": [], "unitScale": true }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
-      "id": 8,
-      "options": { "legend": { "calcs": [], "displayMode": "hidden", "placement": "right", "showLegend": false }, "tooltip": { "mode": "single", "sort": "none" } },
-      "targets": [
-        {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-          "editorMode": "code",
-          "format": "time_series",
-          "rawQuery": true,
-          "rawSql": "SELECT $__timeGroup(ts, $__interval) AS time, query, COUNT(*) AS value FROM (SELECT at AS ts, COALESCE(query, strain_name, 'unknown') AS query FROM analytics_events WHERE $__timeFilter(at) AND event_name = 'bot_strain_found' UNION ALL SELECT event_at AS ts, COALESCE(meta->>'query', meta->>'name', meta->>'resolved', 'unknown') AS query FROM app_analytics WHERE $__timeFilter(event_at) AND event_name = 'strain-found') q GROUP BY time, query ORDER BY time;",
-          "refId": "A"
-        }
-      ],
-      "title": "Successful strain query event breakdown",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "fillOpacity": 80, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineWidth": 1, "scaleDistribution": { "type": "linear" }, "thresholdsStyle": { "mode": "off" } }, "mappings": [], "unit": "short", "unitScale": true }, "overrides": [] },
-      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 12 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short",
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
       "id": 5,
-      "options": { "barRadius": 0, "barWidth": 0.97, "fullHighlight": false, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "right", "showLegend": true }, "orientation": "horizontal", "showValue": "never", "stacking": "none", "tooltip": { "mode": "single", "sort": "none" }, "xTickLabelRotation": 0, "xTickLabelSpacing": 0 },
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "orientation": "horizontal",
+        "showValue": "never",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -307,14 +1185,296 @@
       "type": "barchart"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } }, "mappings": [], "unitScale": true }, "overrides": [] },
-      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 18 },
-      "id": 4,
-      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 100,
+            "gradientMode": "hue",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "hidden",
+          "placement": "right",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroup(ts, $__interval) AS time, query, COUNT(*) AS value FROM (SELECT at AS ts, COALESCE(query, strain_name, 'unknown') AS query FROM analytics_events WHERE $__timeFilter(at) AND event_name = 'bot_strain_found' UNION ALL SELECT event_at AS ts, COALESCE(meta->>'query', meta->>'name', meta->>'resolved', 'unknown') AS query FROM app_analytics WHERE $__timeFilter(event_at) AND event_name = 'strain-found') q GROUP BY time, query ORDER BY time;",
+          "refId": "A"
+        }
+      ],
+      "title": "Successful strain query event breakdown",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 110,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  COALESCE(a.meta->>'query', a.meta->>'name') AS strain_name,\n  COUNT(*) AS total_searches,\n  COUNT(DISTINCT a.user_id) AS unique_users,\n  STRING_AGG(\n    DISTINCT COALESCE(u.username, a.user_id::text),\n    ', '\n    ORDER BY COALESCE(u.username, a.user_id::text)\n  ) AS searched_by,\n  STRING_AGG(\n    TO_CHAR(a.event_at, 'YYYY-MM-DD HH24:MI:SS'),\n    ', '\n    ORDER BY a.event_at\n  ) AS search_times\nFROM app_analytics a\nLEFT JOIN users u\n  ON u.telegram_id = a.user_id\nWHERE a.event_name IN ('strain-found', 'strain-not-found')\n  AND $__timeFilter(a.event_at)\n  AND COALESCE(a.meta->>'query', a.meta->>'name') IS NOT NULL\nGROUP BY COALESCE(a.meta->>'query', a.meta->>'name')\nORDER BY total_searches DESC;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Queries",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "value strain-not-found",
+                  "value strain-found"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
@@ -326,14 +1486,89 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": {} },
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 25 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 46
+      },
       "id": 101,
-      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
@@ -345,14 +1580,62 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": {} },
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 25 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 46
+      },
       "id": 102,
-      "options": { "showHeader": true },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.3.3",
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -364,14 +1647,63 @@
       "type": "table"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 32 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 53
+      },
       "id": 103,
-      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.3",
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -383,14 +1715,63 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 32 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 53
+      },
       "id": 104,
-      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.3",
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -402,14 +1783,62 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": {} },
-      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 32 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 53
+      },
       "id": 105,
-      "options": { "showHeader": true },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.3.3",
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -421,14 +1850,63 @@
       "type": "table"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 36 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 57
+      },
       "id": 106,
-      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.3",
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -440,14 +1918,65 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "unit": "percent" } },
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 36 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent",
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 57
+      },
       "id": 107,
-      "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdMarkers": false },
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": false,
+        "sizing": "auto"
+      },
+      "pluginVersion": "10.3.3",
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -459,14 +1988,62 @@
       "type": "gauge"
     },
     {
-      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": {} },
-      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 36 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 57
+      },
       "id": 108,
-      "options": { "showHeader": true },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.3.3",
       "targets": [
         {
-          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -476,11 +2053,537 @@
       ],
       "title": "Broadcast timing and delivery by broadcast_id",
       "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "semi-dark-purple",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 61
+      },
+      "id": 200,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(DISTINCT user_id) AS encounter_distinct_users\nFROM app_analytics\nWHERE $__timeFilter(event_at)\n  AND event_name = 'strain-collection-confirm'\n  AND user_id IS NOT NULL;",
+          "refId": "A"
+        }
+      ],
+      "title": "Encounter: distinct users (period)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "semi-dark-purple",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 61
+      },
+      "id": 201,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(DISTINCT NULLIF(trim(meta->>'strain'), '')) AS encounter_distinct_strains\nFROM app_analytics\nWHERE $__timeFilter(event_at)\n  AND event_name = 'strain-collection-confirm'\n  AND NULLIF(trim(meta->>'strain'), '') IS NOT NULL;",
+          "refId": "A"
+        }
+      ],
+      "title": "Encounter: distinct strains (period)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "semi-dark-purple",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 61
+      },
+      "id": 202,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS encounter_confirm_events\nFROM app_analytics\nWHERE $__timeFilter(event_at)\n  AND event_name = 'strain-collection-confirm';",
+          "refId": "A"
+        }
+      ],
+      "title": "Encounter: confirmation events",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "semi-dark-purple",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 61
+      },
+      "id": 203,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS encounter_remove_events\nFROM app_analytics\nWHERE $__timeFilter(event_at)\n  AND event_name = 'strain-collection-remove';",
+          "refId": "A"
+        }
+      ],
+      "title": "Encounter: withdrawal events",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 65
+      },
+      "id": 204,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroup(event_at, $__interval) AS time,\n       CASE WHEN event_name = 'strain-collection-confirm' THEN 'confirm' ELSE 'remove' END AS metric,\n       COUNT(*)::double precision AS value\nFROM app_analytics\nWHERE $__timeFilter(event_at)\n  AND event_name IN ('strain-collection-confirm', 'strain-collection-remove')\nGROUP BY 1, 2\nORDER BY 1;",
+          "refId": "A"
+        }
+      ],
+      "title": "Strain encounters: confirm vs withdraw (throughput)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short",
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 73
+      },
+      "id": 205,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "orientation": "horizontal",
+        "showValue": "never",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(NULLIF(trim(meta->>'strain'), ''), '(unknown)') AS strain,\n       COUNT(*) AS confirmations\nFROM app_analytics\nWHERE $__timeFilter(event_at)\n  AND event_name = 'strain-collection-confirm'\nGROUP BY 1\nORDER BY confirmations DESC\nLIMIT 15;",
+          "refId": "A"
+        }
+      ],
+      "title": "Encounter: top strains by confirmations (period)",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_NUGLABS_PGQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 73
+      },
+      "id": 206,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "event_at"
+          }
+        ]
+      },
+      "pluginVersion": "10.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_NUGLABS_PGQL}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT event_at,\n       event_name,\n       user_id,\n       COALESCE(meta->>'strain', '') AS strain,\n       COALESCE(meta->>'interaction_kind_raw', '') AS token_kind,\n       COALESCE(meta->>'encounter_cnt', '') AS encounter_cnt_after,\n       COALESCE(meta->>'removed', '') AS removed\nFROM app_analytics\nWHERE $__timeFilter(event_at)\n  AND event_name IN (\n    'strain-collection-confirm',\n    'strain-collection-remove',\n    'strain-collection-press-miss',\n    'strain-collection-press-invalid',\n    'strain-collection-press-error'\n  )\nORDER BY event_at DESC\nLIMIT 200;",
+          "refId": "A"
+        }
+      ],
+      "title": "Encounter: recent app_analytics events",
+      "type": "table"
     }
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": [],
+  "tags": [
+    "nuglabs-bot",
+    "analytics",
+    "strain-encounters",
+    "collection"
+  ],
   "templating": {
     "list": []
   },
@@ -491,7 +2594,6 @@
   "timepicker": {},
   "timezone": "",
   "title": "Nug Labs Bot Analytics",
-  "uid": "df7bfe5e-3429-4e00-a8a8-fb4df121ef3e",
-  "version": 48,
+  "uid": "nuglabs-bot-analytics",
   "weekStart": ""
 }
