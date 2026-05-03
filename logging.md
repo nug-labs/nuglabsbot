@@ -52,7 +52,7 @@ For new process telemetry, log lines use a structured pattern:
 - **When:** Confirmation attempts complete.
 - **`status`:** **`ok`** (insert + count), **`miss`** (no token row / duplicate consume), **`invalid`** (malformed **`scf:`** payload), **`error`** (DB / scan failure apart from **`miss`**).
 - **Typical structured fields:** `user_id`, `strain` (canonical), `encounter_cnt` (logged on **`ok`**), **`token_id`**, **`phase`** (logging inside **`handle-strain`** on token insert/count warnings).
-- **Note:** On success there is **no** extra **`SendMessage`** (congrats/community); only **`AnswerCallbackQuery`** toasts the copy from **`assets/strain_collection.yml`** (`callback_recorded` / `callback_expired`).
+- **Note:** After the callback succeeds, **`NotifyAfterStrainCollected`** may **`SendMessage`** one updated strain card (with Encounter count) plus re-queue subscriber strain pushes (**no** Encounter on subscriber cards).
 
 ## Existing warning/error logs kept
 

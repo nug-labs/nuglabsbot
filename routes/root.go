@@ -21,16 +21,22 @@ import (
 	"nuglabsbot-v2/utils"
 )
 
+// StrainCollectedNotifier runs after a successful strain collection button press (optional).
+type StrainCollectedNotifier interface {
+	NotifyAfterStrainCollected(ctx context.Context, post func(chatID int64, msg handlemessage.OutboundMessage) error, ok *handlemessage.StrainCollectConfirm) error
+}
+
 type UpdateRouter struct {
-	bot              *tgbotapi.BotAPI
-	log              *utils.Logger
-	userMiddleware   *middleware.HandleUserMiddleware
-	strainPressRoute *strainPressCallbacks
-	messageRoute     *MessageRoute
-	commandRoute     *CommandRoute
-	inlineRoute      *InlineRoute
-	emptyRoute       *EmptyRoute
-	chatMemberRoute  *ChatMemberRoute
+	bot                  *tgbotapi.BotAPI
+	log                  *utils.Logger
+	userMiddleware       *middleware.HandleUserMiddleware
+	strainPressRoute     *strainPressCallbacks
+	strainCollectedNotif StrainCollectedNotifier
+	messageRoute         *MessageRoute
+	commandRoute         *CommandRoute
+	inlineRoute          *InlineRoute
+	emptyRoute           *EmptyRoute
+	chatMemberRoute      *ChatMemberRoute
 }
 
 type strainPressCallbacks struct {
@@ -42,6 +48,7 @@ func NewUpdateRouter(
 	log *utils.Logger,
 	userMiddleware *middleware.HandleUserMiddleware,
 	strainPress *handlestrainpress.RootUseCase,
+	strainCollected StrainCollectedNotifier,
 	messageRoute *MessageRoute,
 	commandRoute *CommandRoute,
 	inlineRoute *InlineRoute,
@@ -53,15 +60,16 @@ func NewUpdateRouter(
 		sp = &strainPressCallbacks{useCase: strainPress}
 	}
 	return &UpdateRouter{
-		bot:              bot,
-		log:              log,
-		userMiddleware:   userMiddleware,
-		strainPressRoute: sp,
-		messageRoute:     messageRoute,
-		commandRoute:     commandRoute,
-		inlineRoute:      inlineRoute,
-		emptyRoute:       emptyRoute,
-		chatMemberRoute:  chatMemberRoute,
+		bot:                  bot,
+		log:                  log,
+		userMiddleware:       userMiddleware,
+		strainPressRoute:     sp,
+		strainCollectedNotif: strainCollected,
+		messageRoute:         messageRoute,
+		commandRoute:         commandRoute,
+		inlineRoute:          inlineRoute,
+		emptyRoute:           emptyRoute,
+		chatMemberRoute:      chatMemberRoute,
 	}
 }
 
@@ -133,7 +141,7 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 			return sendChatOutbound(r.bot, update.Message.Chat.ID, reply)
 		}
 		// Joins, member updates, pins, and many "settings" events send a Message with no Text/Caption.
-		// Without this, empty input hits strain → "Please provide a strain name." in groups.
+		// Without this, empty input hits strain → please-provide strain copy in groups.
 		body := strings.TrimSpace(update.Message.Text)
 		if body == "" {
 			body = strings.TrimSpace(update.Message.Caption)
@@ -144,7 +152,7 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 				return err
 			}
 			if strings.TrimSpace(reply) != "" {
-				return sendChatOutbound(r.bot, update.Message.Chat.ID, utils.OutboundMessage{Text: reply})
+				return sendChatOutbound(r.bot, update.Message.Chat.ID, handlemessage.OutboundMessage{Text: reply})
 			}
 			// Member service messages are fully handled in chat-member flow; skip empty tracker to avoid duplicate events.
 			if len(update.Message.NewChatMembers) > 0 || update.Message.LeftChatMember != nil {
@@ -157,7 +165,7 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 			if strings.TrimSpace(reply) == "" {
 				return nil
 			}
-			return sendChatOutbound(r.bot, update.Message.Chat.ID, utils.OutboundMessage{Text: reply})
+			return sendChatOutbound(r.bot, update.Message.Chat.ID, handlemessage.OutboundMessage{Text: reply})
 		}
 		reply, err := r.messageRoute.Handle(ctx, user, update.Message.Chat.ID, body)
 		if err != nil {
@@ -171,7 +179,7 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 
 	if update.CallbackQuery != nil && r.strainPressRoute != nil && r.strainPressRoute.useCase != nil {
 		cq := update.CallbackQuery
-		if !strings.HasPrefix(strings.TrimSpace(cq.Data), handlestrainpress.CallbackDataPrefix) {
+		if !strings.HasPrefix(strings.TrimSpace(cq.Data), handlemessage.StrainCollectionCallbackPrefix) {
 			return nil
 		}
 		if cq.From == nil || cq.Message == nil {
@@ -191,7 +199,7 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 				return err
 			}
 		}
-		ans, alert := r.strainPressRoute.useCase.Handle(ctx, cq)
+		ans, alert, collected := r.strainPressRoute.useCase.Handle(ctx, cq)
 		cbCfg := tgbotapi.CallbackConfig{
 			CallbackQueryID: cq.ID,
 			Text:            ans,
@@ -202,6 +210,12 @@ func (r *UpdateRouter) HandleUpdate(ctx context.Context, update tgbotapi.Update)
 				r.log.Warn("callback answer failed callback_id=%s: %v", cq.ID, err)
 			}
 			return err
+		}
+		if collected != nil && r.strainCollectedNotif != nil {
+			poster := func(cid int64, m handlemessage.OutboundMessage) error { return sendChatOutbound(r.bot, cid, m) }
+			if err := r.strainCollectedNotif.NotifyAfterStrainCollected(ctx, poster, collected); err != nil && r.log != nil {
+				r.log.Warn("strain collected follow-up notifier err=%v", err)
+			}
 		}
 		return nil
 	}
@@ -267,7 +281,7 @@ func getUpdatesTimeoutSeconds() int {
 	return n
 }
 
-func sendChatOutbound(bot *tgbotapi.BotAPI, chatID int64, msg utils.OutboundMessage) error {
+func sendChatOutbound(bot *tgbotapi.BotAPI, chatID int64, msg handlemessage.OutboundMessage) error {
 	cfg := tgbotapi.NewMessage(chatID, msg.Text)
 	if utils.LooksLikeTelegramHTML(msg.Text) {
 		cfg.ParseMode = "HTML"

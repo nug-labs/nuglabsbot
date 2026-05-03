@@ -7,7 +7,7 @@ package controllers
 import (
 	"context"
 
-	"nuglabsbot-v2/utils"
+	handlemessage "nuglabsbot-v2/use-cases/handle-message"
 )
 
 type InlineHandler interface {
@@ -15,7 +15,7 @@ type InlineHandler interface {
 }
 
 type InlineStrainHandler interface {
-	Handle(ctx context.Context, userID, chatID int64, input string) (utils.OutboundMessage, error)
+	Handle(ctx context.Context, userID, chatID int64, input string) (handlemessage.OutboundMessage, error)
 }
 
 type InlineController struct {
@@ -34,6 +34,6 @@ func (c *InlineController) HandleQuery(ctx context.Context, userID, chatID int64
 	return c.inlineHandler.Handle(ctx, userID, chatID, query)
 }
 
-func (c *InlineController) HandleTap(ctx context.Context, actorUserID, chatID int64, selected string) (utils.OutboundMessage, error) {
+func (c *InlineController) HandleTap(ctx context.Context, actorUserID, chatID int64, selected string) (handlemessage.OutboundMessage, error) {
 	return c.strainHandler.Handle(ctx, actorUserID, chatID, selected)
 }

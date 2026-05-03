@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"strings"
+
 	"nuglabsbot-v2/utils"
 )
 
@@ -28,7 +29,7 @@ func NewRootUseCase(
 	}
 }
 
-func (u *RootUseCase) Handle(ctx context.Context, actorUserID, chatID int64, input string) (utils.OutboundMessage, error) {
+func (u *RootUseCase) Handle(ctx context.Context, actorUserID, chatID int64, input string) (OutboundMessage, error) {
 	input = strings.TrimSpace(input)
 
 	if isLikelyURL(input) {
@@ -37,11 +38,11 @@ func (u *RootUseCase) Handle(ctx context.Context, actorUserID, chatID int64, inp
 
 	out, err := u.handleStrain.Handle(ctx, actorUserID, chatID, input)
 	if err != nil {
-		return utils.OutboundMessage{}, err
+		return OutboundMessage{}, err
 	}
-	if strings.EqualFold(strings.TrimSpace(out.Text), "No matching strain found.") {
+	if strings.EqualFold(strings.TrimSpace(out.Text), StrainCollectionMessages().StrainNoMatching) {
 		txt, err := u.handleUnknown.Handle(ctx, actorUserID, chatID, input)
-		return utils.OutboundMessage{Text: txt}, err
+		return OutboundMessage{Text: txt}, err
 	}
 	return out, nil
 }

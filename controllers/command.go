@@ -9,11 +9,15 @@ package controllers
 import (
 	"context"
 	"strings"
+
+	handlemessage "nuglabsbot-v2/use-cases/handle-message"
 	"nuglabsbot-v2/utils"
 )
 
 type StrainHandler interface {
-	Handle(ctx context.Context, actorUserID, chatID int64, input string) (utils.OutboundMessage, error)
+	Handle(ctx context.Context, actorUserID, chatID int64, input string) (handlemessage.OutboundMessage, error)
+	// HandleDeeplink is /start <strain> (t.me link): parity mint for global +/− collection control.
+	HandleDeeplink(ctx context.Context, actorUserID, chatID int64, input string) (handlemessage.OutboundMessage, error)
 }
 
 type PolicyHandler interface {
@@ -40,7 +44,7 @@ func NewCommandController(strainHandler StrainHandler, policyHandler PolicyHandl
 	}
 }
 
-func (c *CommandController) Handle(ctx context.Context, actorUserID, chatID int64, command string, argument string) (utils.OutboundMessage, error) {
+func (c *CommandController) Handle(ctx context.Context, actorUserID, chatID int64, command string, argument string) (handlemessage.OutboundMessage, error) {
 	cmd := strings.ToLower(strings.TrimSpace(strings.TrimPrefix(command, "/")))
 	arg := strings.TrimSpace(argument)
 
@@ -60,30 +64,33 @@ func (c *CommandController) Handle(ctx context.Context, actorUserID, chatID int6
 	case "start":
 		if arg != "" {
 			normalized := strings.ReplaceAll(arg, "-", " ")
-			return c.strainHandler.Handle(ctx, actorUserID, chatID, normalized)
+			return c.strainHandler.HandleDeeplink(ctx, actorUserID, chatID, normalized)
 		}
 		if chatID < 0 {
-			return utils.OutboundMessage{}, nil
+			return handlemessage.OutboundMessage{}, nil
 		}
 		s, err := c.policyHandler.Handle(ctx, actorUserID, chatID, "start")
-		return utils.OutboundMessage{Text: s}, err
+		return handlemessage.OutboundMessage{Text: s}, err
 	case "subscribe":
 		s, err := c.subscribeHandler.Handle(ctx, chatID)
-		return utils.OutboundMessage{Text: s}, err
+		return handlemessage.OutboundMessage{Text: s}, err
 	case "help":
 		s, err := c.policyHandler.Handle(ctx, actorUserID, chatID, "help")
-		return utils.OutboundMessage{Text: s}, err
+		return handlemessage.OutboundMessage{Text: s}, err
 	case "about":
 		s, err := c.policyHandler.Handle(ctx, actorUserID, chatID, "about")
-		return utils.OutboundMessage{Text: s}, err
+		return handlemessage.OutboundMessage{Text: s}, err
 	case "legal":
 		s, err := c.policyHandler.Handle(ctx, actorUserID, chatID, "legal")
-		return utils.OutboundMessage{Text: s}, err
+		return handlemessage.OutboundMessage{Text: s}, err
 	case "links":
 		s, err := c.policyHandler.Handle(ctx, actorUserID, chatID, "links")
-		return utils.OutboundMessage{Text: s}, err
+		return handlemessage.OutboundMessage{Text: s}, err
+	case "community":
+		s, err := c.policyHandler.Handle(ctx, actorUserID, chatID, "community")
+		return handlemessage.OutboundMessage{Text: s}, err
 	default:
 		s, err := c.policyHandler.Handle(ctx, actorUserID, chatID, "help")
-		return utils.OutboundMessage{Text: s}, err
+		return handlemessage.OutboundMessage{Text: s}, err
 	}
 }

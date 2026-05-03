@@ -9,6 +9,7 @@ import (
 
 	"nuglabsbot-v2/controllers"
 	"nuglabsbot-v2/middleware"
+	handlemessage "nuglabsbot-v2/use-cases/handle-message"
 	"nuglabsbot-v2/utils"
 )
 
@@ -33,12 +34,12 @@ func (r *InlineRoute) HandleQuery(ctx context.Context, user middleware.TelegramU
 	return r.controller.HandleQuery(ctx, user.TelegramID, user.TelegramID, query)
 }
 
-func (r *InlineRoute) HandleTap(ctx context.Context, user middleware.TelegramUser, selected string) (utils.OutboundMessage, error) {
+func (r *InlineRoute) HandleTap(ctx context.Context, user middleware.TelegramUser, selected string) (handlemessage.OutboundMessage, error) {
 	if err := r.middleware.EnsureUser(ctx, user, user.TelegramID); err != nil {
 		if r.log != nil {
 			r.log.Warn("inline route tap: ensure user failed: %v", err)
 		}
-		return utils.OutboundMessage{}, err
+		return handlemessage.OutboundMessage{}, err
 	}
 	// Private chat id equals user id; inline has no separate chat in this route.
 	return r.controller.HandleTap(ctx, user.TelegramID, user.TelegramID, selected)

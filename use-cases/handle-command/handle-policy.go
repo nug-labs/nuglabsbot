@@ -8,6 +8,7 @@ package handlecommand
 import (
 	"context"
 	"fmt"
+	"html"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,5 +31,17 @@ func (u *HandlePolicyUseCase) Handle(ctx context.Context, policyName string) (st
 	if err != nil {
 		return "", fmt.Errorf("read policy %s: %w", policyName, err)
 	}
-	return string(raw), nil
+	out := string(raw)
+	if policyName == "community" {
+		out = renderCommunityPolicyHTML(out)
+	}
+	return out, nil
+}
+
+func renderCommunityPolicyHTML(body string) string {
+	linkLine := `<i>Set COMMUNITY_URL for the invite link.</i>`
+	if u := strings.TrimSpace(os.Getenv("COMMUNITY_URL")); u != "" {
+		linkLine = `<a href="` + html.EscapeString(u) + `">` + html.EscapeString("Open community") + `</a>`
+	}
+	return strings.ReplaceAll(body, "{{LINK_LINE}}", linkLine)
 }

@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"errors"
 
+	handlemessage "nuglabsbot-v2/use-cases/handle-message"
 	"nuglabsbot-v2/utils"
 	"nuglabsbot-v2/utils/db"
 )
@@ -25,6 +26,7 @@ func NewRootUseCase(store db.DB, analytics *utils.Analytics) *RootUseCase {
 }
 
 func (u *RootUseCase) Handle(ctx context.Context, chatID int64) (string, error) {
+	sys := handlemessage.StrainCollectionMessages()
 	var enabled bool
 	err := u.store.QueryRowContext(
 		ctx,
@@ -48,7 +50,7 @@ func (u *RootUseCase) Handle(ctx context.Context, chatID int64) (string, error) 
 			UserID: chatID,
 			Status: "ok",
 		})
-		return "Subscription enabled.", nil
+		return sys.SubscriptionEnabled, nil
 	}
 	if err != nil {
 		return "", err
@@ -70,7 +72,7 @@ func (u *RootUseCase) Handle(ctx context.Context, chatID int64) (string, error) 
 			UserID: chatID,
 			Status: "ok",
 		})
-		return "Subscription enabled.", nil
+		return sys.SubscriptionEnabled, nil
 	}
 
 	_ = u.analytics.TrackEvent(ctx, utils.AnalyticsEvent{
@@ -78,5 +80,5 @@ func (u *RootUseCase) Handle(ctx context.Context, chatID int64) (string, error) 
 		UserID: chatID,
 		Status: "ok",
 	})
-	return "Subscription disabled.", nil
+	return sys.SubscriptionDisabled, nil
 }

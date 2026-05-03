@@ -52,37 +52,38 @@ func NewHandleURLUseCase(
 	}
 }
 
-func (u *HandleURLUseCase) Handle(ctx context.Context, actorUserID, chatID int64, input string) (utils.OutboundMessage, error) {
+func (u *HandleURLUseCase) Handle(ctx context.Context, actorUserID, chatID int64, input string) (OutboundMessage, error) {
+	sys := StrainCollectionMessages()
 	// Message root already routes here only for likely URLs; parse is defense in depth.
 	parsed, err := url.Parse(strings.TrimSpace(input))
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-		return utils.OutboundMessage{Text: "Please send a valid URL."}, nil
+		return OutboundMessage{Text: sys.URLInvalid}, nil
 	}
 	rawURL := parsed.String()
 
 	allowed, err := u.isWhitelisted(ctx, rawURL, parsed.Host)
 	if err != nil {
-		return utils.OutboundMessage{}, err
+		return OutboundMessage{}, err
 	}
 	if !allowed {
-		return utils.OutboundMessage{Text: "URL domain is not whitelisted."}, nil
+		return OutboundMessage{Text: sys.URLDomainNotWhitelisted}, nil
 	}
 
 	body, err := fetchBody(ctx, rawURL)
 	if err != nil {
-		return utils.OutboundMessage{}, err
+		return OutboundMessage{}, err
 	}
 	body = extractBodyText(body)
 	if strings.TrimSpace(body) == "" {
-		return utils.OutboundMessage{Text: "Unable to extract readable body content from URL."}, nil
+		return OutboundMessage{Text: sys.URLUnreadableBody}, nil
 	}
 
 	candidates, err := u.extractWithGemini(ctx, actorUserID, chatID, body)
 	if err != nil {
-		return utils.OutboundMessage{}, err
+		return OutboundMessage{}, err
 	}
 	if len(candidates) == 0 {
-		return utils.OutboundMessage{Text: "No strain names could be extracted."}, nil
+		return OutboundMessage{Text: sys.URLNoStrainCandidates}, nil
 	}
 
 	foundStrains := make([]map[string]any, 0, len(candidates))
@@ -128,7 +129,8 @@ func (u *HandleURLUseCase) Handle(ctx context.Context, actorUserID, chatID int64
 		if b.Len() > 0 {
 			b.WriteString("\n\n")
 		}
-		b.WriteString("Not found:\n")
+		b.WriteString(sys.URLStrainsNotFoundHeading)
+		b.WriteString("\n")
 		for _, name := range notFound {
 			b.WriteString("- ")
 			b.WriteString(html.EscapeString(name))
@@ -137,9 +139,9 @@ func (u *HandleURLUseCase) Handle(ctx context.Context, actorUserID, chatID int64
 	}
 	msg := strings.TrimSpace(b.String())
 	if msg == "" {
-		msg = "No known strains found from URL content."
+		msg = sys.URLNoKnownStrains
 	}
-	return utils.OutboundMessage{Text: msg}, nil
+	return OutboundMessage{Text: msg}, nil
 }
 
 func (u *HandleURLUseCase) extractWithGemini(ctx context.Context, actorUserID, chatID int64, body string) ([]string, error) {

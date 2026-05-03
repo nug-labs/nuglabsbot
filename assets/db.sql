@@ -111,3 +111,7 @@ CREATE TABLE IF NOT EXISTS strain_press_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_strain_press_tokens_created ON strain_press_tokens(created_at);
+
+ALTER TABLE strain_press_tokens ADD COLUMN IF NOT EXISTS interaction_kind TEXT NOT NULL DEFAULT 'parity';
+ALTER TABLE strain_collection_encounters ADD COLUMN IF NOT EXISTS source_token_id BIGINT REFERENCES strain_press_tokens(id);
+CREATE INDEX IF NOT EXISTS idx_strain_coll_source_token ON strain_collection_encounters(source_token_id);

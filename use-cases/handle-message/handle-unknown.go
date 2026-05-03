@@ -41,14 +41,15 @@ func (u *HandleUnknownUseCase) Handle(ctx context.Context, actorUserID, chatID i
 			return "", err
 		}
 	}
+	fallbackUnknown := StrainCollectionMessages().UnknownQueryFallback
 	if msg == "" {
 		// Groups/supergroups: negative chat ID — stay silent instead of flooding chat.
 		if chatID >= 0 {
-			msg = "Unknown query"
+			msg = fallbackUnknown
 		}
 	}
-	// responses.default (or other keys) may still be the literal "Unknown query" — hide in groups too.
-	if chatID < 0 && strings.EqualFold(strings.TrimSpace(msg), "Unknown query") {
+	// responses.default (or other keys) may still match fallback unknown — hide in groups too.
+	if chatID < 0 && strings.EqualFold(strings.TrimSpace(msg), fallbackUnknown) {
 		msg = ""
 	}
 

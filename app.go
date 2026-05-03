@@ -82,7 +82,7 @@ func main() {
 	}
 
 	handleUnknownUC := handlemessage.NewHandleUnknownUseCase(database, analytics)
-	handleStrainUC := handlemessage.NewHandleStrainUseCase(nugClient, analytics, database, deferredWrites, logger)
+	handleStrainUC := handlemessage.NewHandleStrainUseCase(nugClient, analytics, database, deferredWrites, logger, broadcastSender)
 	handleURLUC := handlemessage.NewHandleURLUseCase(database, analytics, nugClient, logger)
 	handleMessageRootUC := handlemessage.NewRootUseCase(handleURLUC, handleStrainUC, handleUnknownUC, analytics)
 
@@ -106,7 +106,7 @@ func main() {
 	emptyRoute := routes.NewEmptyRoute(emptyController, logger)
 	chatMemberRoute := routes.NewChatMemberRoute(chatMemberController, logger)
 	strainPressUC := handlestrainpress.NewRootUseCase(database, analytics, logger)
-	updateRouter := routes.NewUpdateRouter(bot, logger, userMiddleware, strainPressUC, messageRoute, commandRoute, inlineRoute, emptyRoute, chatMemberRoute)
+	updateRouter := routes.NewUpdateRouter(bot, logger, userMiddleware, strainPressUC, handleStrainUC, messageRoute, commandRoute, inlineRoute, emptyRoute, chatMemberRoute)
 	broadcastService := bgservices.NewHandleBroadcastService(handleBroadcastUC, logger)
 
 	go updateRouter.Run(ctx)
@@ -126,7 +126,7 @@ type telegramBroadcaster struct {
 	bot *tgbotapi.BotAPI
 }
 
-func (t *telegramBroadcaster) SendOutbound(chatID int64, msg utils.OutboundMessage) (int64, error) {
+func (t *telegramBroadcaster) SendOutbound(chatID int64, msg handlemessage.OutboundMessage) (int64, error) {
 	cfg := tgbotapi.NewMessage(chatID, msg.Text)
 	if utils.LooksLikeTelegramHTML(msg.Text) {
 		cfg.ParseMode = "HTML"

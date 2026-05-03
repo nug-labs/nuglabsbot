@@ -21,6 +21,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
+	handlemessage "nuglabsbot-v2/use-cases/handle-message"
 	"nuglabsbot-v2/utils"
 	"nuglabsbot-v2/utils/db"
 )
@@ -28,9 +29,9 @@ import (
 const pendingOutgoingReadCacheTTL = 0
 const broadcastRunSlowThreshold = 2 * time.Second
 
-// SubscriptionStrainCardBuilder rebuilds live strain cards for subscription fan-out (per-recipient encounters + press button).
+// SubscriptionStrainCardBuilder rebuilds plain strain HTML for subscriber fan-out (no encounter line, no collection button).
 type SubscriptionStrainCardBuilder interface {
-	BuildSubscriptionStrainCard(ctx context.Context, recipientTelegramID int64, strainCanonical string) (utils.OutboundMessage, error)
+	BuildSubscriptionStrainCard(ctx context.Context, recipientTelegramID int64, strainCanonical string) (handlemessage.OutboundMessage, error)
 }
 
 type RootUseCase struct {
@@ -124,7 +125,7 @@ func (u *RootUseCase) RunOnce() error {
 			canonical := strings.TrimSpace(fmt.Sprint(payload["strain_canonical"]))
 			textFallback, _ := payload["text"].(string)
 			textFallback = strings.TrimSpace(textFallback)
-			outbound := utils.OutboundMessage{}
+			outbound := handlemessage.OutboundMessage{}
 			if canonical != "" && u.strainSubscriptionCard != nil {
 				built, berr := u.strainSubscriptionCard.BuildSubscriptionStrainCard(ctx, userID, canonical)
 				if berr != nil && u.log != nil {
@@ -134,7 +135,7 @@ func (u *RootUseCase) RunOnce() error {
 				}
 			}
 			if strings.TrimSpace(outbound.Text) == "" {
-				outbound = utils.OutboundMessage{Text: textFallback}
+				outbound = handlemessage.OutboundMessage{Text: textFallback}
 			}
 			if strings.TrimSpace(outbound.Text) != "" && u.messageBroadcast != nil {
 				mid, err := u.messageBroadcast.SendOutbound(userID, outbound)

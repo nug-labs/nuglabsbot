@@ -1,9 +1,0 @@
-# Copy for Telegram strain cards — encounter_line may be "%d times" or legacy "Encountered: %d times" (bold label applied in formatter).
-press_if_found: "Press if you found this strain"
-encounter_line: "%d times"
-# Optional copy only (bot does not send a follow-up message after pressing the button — only callback_recorded / callback_expired toasts).
-congrat_once: "Congratulations! You have found your strain once. We have added it to your collection."
-congrat_plural: "Congratulations! You have found %d times. We have added it to your collection."
-community_button: "Community"
-callback_recorded: "Added to your collection."
-callback_expired: "This confirmation link has expired or was already used."

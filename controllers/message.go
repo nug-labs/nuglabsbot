@@ -9,11 +9,12 @@ package controllers
 
 import (
 	"context"
-	"nuglabsbot-v2/utils"
+
+	handlemessage "nuglabsbot-v2/use-cases/handle-message"
 )
 
 type MessageHandler interface {
-	Handle(ctx context.Context, actorUserID, chatID int64, input string) (utils.OutboundMessage, error)
+	Handle(ctx context.Context, actorUserID, chatID int64, input string) (handlemessage.OutboundMessage, error)
 }
 
 type MessageController struct {
@@ -24,6 +25,6 @@ func NewMessageController(handler MessageHandler) *MessageController {
 	return &MessageController{handler: handler}
 }
 
-func (c *MessageController) Handle(ctx context.Context, actorUserID, chatID int64, input string) (utils.OutboundMessage, error) {
+func (c *MessageController) Handle(ctx context.Context, actorUserID, chatID int64, input string) (handlemessage.OutboundMessage, error) {
 	return c.handler.Handle(ctx, actorUserID, chatID, input)
 }

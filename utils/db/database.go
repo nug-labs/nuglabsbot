@@ -19,6 +19,7 @@ type DB interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryContext(ctx context.Context, query string, cacheLifetime time.Duration, args ...any) (Rows, error)
 	QueryRowContext(ctx context.Context, query string, cacheLifetime time.Duration, args ...any) Row
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
 // Database wraps *sql.DB with optional read caching.
@@ -97,6 +98,10 @@ func (d *Database) QueryRowContext(ctx context.Context, query string, cacheLifet
 	vals := data[0]
 	d.cache.setRowOK(key, vals, cacheLifetime)
 	return &materializedRow{vals: vals}
+}
+
+func (d *Database) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+	return d.raw.BeginTx(ctx, opts)
 }
 
 func (d *Database) Close() error {
