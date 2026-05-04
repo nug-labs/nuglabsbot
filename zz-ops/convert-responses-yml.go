@@ -13,7 +13,7 @@ import (
 func main() {
 	utils.Env.InitOps()
 
-	srcPath := filepath.Join(".", "assets", "responses.yml")
+	srcPath := filepath.Join(".", "assets", "outgoing-messages", "strain-messages.yml")
 	entries, err := utils.ParseSimpleMapYAML(srcPath)
 	if err != nil {
 		panic(err)
